@@ -1,0 +1,9 @@
+# IntelliJ project files
+.idea/
+*.iml
+
+# Build outputs
+out/
+build/
+target/
+*.class
