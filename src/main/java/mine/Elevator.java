@@ -18,22 +18,24 @@ public class Elevator extends Location {
 	// Operates the elevator, moving it from the top to the bottom of the shaft.
 	public synchronized void operate() {
 		
-		if (this.current == "top") {
+		if ("top".equals(this.current)) {
 			this.current = "bottom";
 			if (this.cart != null) {
-				System.out.println("elevator descends with " + this.cart.toString());				
+				// [LOGGING] elevator descends with cart
+				MineLogger.log("ELEVATOR", "descends with " + this.cart);
 			}
 			else {
-				System.out.println("elevator descends (empty)");
+				MineLogger.log("ELEVATOR", "descends (empty)");
 			}
 		}
 		else {
 			this.current = "top";
 			if (this.cart != null) {
-				System.out.println("elevator ascends with " + this.cart.toString());				
+				// [LOGGING] elevator ascends with cart
+				MineLogger.log("ELEVATOR", "ascends with " + this.cart);
 			}
 			else {
-				System.out.println("elevator ascends (empty)");
+				MineLogger.log("ELEVATOR", "ascends (empty)");
 			}
 		}
 		
@@ -55,7 +57,7 @@ public class Elevator extends Location {
 	// elevator present and empty.
 	public synchronized void arrive(Cart cart) throws InterruptedException {
 			
-		while (this.cart != null || this.current == "bottom") {
+		while (this.cart != null || "bottom".equals(this.current)) {
 			wait();
 		}
 		
@@ -65,11 +67,11 @@ public class Elevator extends Location {
 		
 	}
 
-	// Allows the Producert to collect a Cart from the top of the shaft, once
+	// Allows the Producer to collect a Cart from the top of the shaft, once
 	// elevator present and not empty.
 	public synchronized Cart depart() throws InterruptedException {
 		
-		while (this.cart == null || this.current == "bottom") {
+		while (this.cart == null || "bottom".equals(this.current)) {
 			wait();
 		}
 		
@@ -85,13 +87,14 @@ public class Elevator extends Location {
 	@Override
 	public synchronized Cart collect() throws InterruptedException {
 		
-		while (this.cart == null || this.current == "top") {
+		while (this.cart == null || "top".equals(this.current)) {
 			wait();
 		}
 		
 		Cart c = this.cart;
 		this.cart = null;
-		System.out.println(c.toString() + " collected from elevator");
+		// [LOGGING] cart collected from elevator
+		MineLogger.log("ELEVATOR", c + " collected from elevator");
 		notifyAll();
 		
 		return c;
@@ -102,12 +105,13 @@ public class Elevator extends Location {
 	@Override
 	public synchronized void deliver(Cart cart) throws InterruptedException {
 		
-		while (this.cart != null || this.current == "top") {
+		while (this.cart != null || "top".equals(this.current)) {
 			wait();
 		}
 			
 		this.cart = cart;
-		System.out.println(this.cart.toString() + " delivered to elevator");
+		// [LOGGING] cart delivered to elevator
+		MineLogger.log("ELEVATOR", this.cart + " delivered to elevator");
 		this.operate();
 		notifyAll();
 				

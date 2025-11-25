@@ -27,7 +27,8 @@ public class Consumer extends Thread {
 			try {
 				// remove a cart from the elevator
 				Cart c = this.elevator.depart();
-				System.out.println(c.toString() + " departs from mine");
+				// [LOGGING] cart departs from mine
+				MineLogger.log("CONSUMER", c + " departs from mine");
 				
 				// pause before removing a further cart
 				sleep(Params.departurePause());

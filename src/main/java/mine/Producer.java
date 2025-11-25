@@ -26,7 +26,8 @@ public class Producer extends Thread {
 			try {
 				// create a new cart and send to elevator
 				Cart cart = Cart.getNewCart();
-				System.out.println(cart.toString() + " arrives at the mine");
+				// [LOGGING] new cart arrives at the mine
+				MineLogger.log("PRODUCER", cart + " arrives at the mine");
 				this.elevator.arrive(cart);
 				
 				// pause before sending another cart

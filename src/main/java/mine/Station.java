@@ -26,7 +26,7 @@ public class Station extends Location {
 		this.gem = false;
 	}
 
-	// Allows an src.main.java.mine.Engine to collect src.main.java.mine.Cart from the src.main.java.mine.Station once loaded with a gem.
+	// Allows an Engine to collect Cart from the Station once loaded with a gem.
 	@Override
 	public synchronized Cart collect() throws InterruptedException {
 		
@@ -39,18 +39,20 @@ public class Station extends Location {
 		
 		if (this.gem) {
 			c.gems += 1;
-			System.out.println(c.toString() + " loaded with a gem");
+			// [LOGGING] cart loaded with a gem at this station
+			MineLogger.log("STATION-" + id, c + " loaded with a gem");
 			this.gem = false;
 		}
 		
 		this.cart = null;
-		System.out.println(c.toString() + " collected from " + this.toString());
+		// [LOGGING] cart collected from this station
+		MineLogger.log("STATION-" + id, c + " collected from " + this);
 		notifyAll();
 		
 		return c;
 	}
 
-	// Allows an src.main.java.mine.Engine to deliver a src.main.java.mine.Cart to the src.main.java.mine.Station once there is no other cart.
+	// Allows an Engine to deliver a Cart to the Station once there is no other cart.
 	@Override
 	public synchronized void deliver(Cart cart) throws InterruptedException {
 
@@ -60,11 +62,12 @@ public class Station extends Location {
 		}
 		
 		this.cart = cart;
-		System.out.println(cart.toString() + " delivered to " + this.toString());
+		// [LOGGING] cart delivered to this station
+		MineLogger.log("STATION-" + id, cart + " delivered to " + this);
 		notifyAll();		
 	}
 
-	// Allows a miner to deposity a gem at the src.main.java.mine.Station once the previous gem has been taken.
+	// Allows a miner to deposit a gem at the Station once the previous gem has been taken.
 	public synchronized void depositGem() throws InterruptedException {
 		
 		// wait while the station is full
@@ -73,6 +76,8 @@ public class Station extends Location {
 		}
 		
 		this.gem = true;
+		// Optional: [LOGGING] miner deposits a gen
+		// MineLogger.log("STATION-" + id, "gem deposited");
 		notifyAll();
 	}
 	
@@ -80,5 +85,4 @@ public class Station extends Location {
 		return "station " + this.id;
 	}
 
-	
 }
