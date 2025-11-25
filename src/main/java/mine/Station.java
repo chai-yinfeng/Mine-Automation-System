@@ -85,4 +85,16 @@ public class Station extends Location {
 		return "station " + this.id;
 	}
 
+	// [JBMC - OBSERVATION METHODS FOR VERIFICATION]
+	public boolean hasCart() {
+		return this.cart != null;
+	}
+
+	public boolean hasGem() {
+		return this.gem;
+	}
+
+	public int getId() {
+		return this.id;
+	}
 }

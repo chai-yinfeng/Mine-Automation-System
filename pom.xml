@@ -9,7 +9,8 @@
 
     <!-- 用 JDK 17 编译 -->
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
     <build>
@@ -21,7 +22,7 @@
                 <version>3.4.1</version>
                 <configuration>
                     <!-- 如果 Main 有包名，填全限定名，例如 com.example.Main -->
-                    <mainClass>Main</mainClass>
+                    <mainClass>mine.Main</mainClass>
                 </configuration>
             </plugin>
 
