@@ -1,3 +1,5 @@
+package mine;
+
 /**
  * The consumer class is responsible for disposing of carts once they 
  * have completed their visit to the mines.

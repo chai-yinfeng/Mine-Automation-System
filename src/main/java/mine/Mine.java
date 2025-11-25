@@ -1,3 +1,5 @@
+package mine;
+
 public class Mine extends Thread {
 
     protected Station station;

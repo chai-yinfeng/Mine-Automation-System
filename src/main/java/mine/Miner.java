@@ -1,3 +1,5 @@
+package mine;
+
 /**
  * Miners mine for gems, which the deposit at Stations.
  *

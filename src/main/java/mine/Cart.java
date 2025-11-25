@@ -1,3 +1,5 @@
+package mine;
+
 /**
  * The carts that collect gems from the mines.
  * 

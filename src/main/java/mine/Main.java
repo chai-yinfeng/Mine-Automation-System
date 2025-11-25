@@ -1,4 +1,4 @@
-package src.main.java;
+package mine;
 
 /**
  * The top-level component of the mine simulator.

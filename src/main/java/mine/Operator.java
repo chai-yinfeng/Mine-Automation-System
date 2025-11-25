@@ -1,3 +1,5 @@
+package mine;
+
 /**
  * The Operator periodically raises and lowers the Elevator.
  * 

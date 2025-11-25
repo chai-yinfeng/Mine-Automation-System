@@ -1,3 +1,5 @@
+package mine;
+
 /**
  * The producer class is responsible for creating carts that will visit to the mines.
  * 

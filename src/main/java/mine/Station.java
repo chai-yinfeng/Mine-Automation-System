@@ -1,5 +1,7 @@
+package mine;
+
 /**
- * The Station class is a type of Location at which mined gems are stored
+ * The src.main.java.mine.Station class is a type of src.main.java.mine.Location at which mined gems are stored
  * until they are loaded onto Carts. Carts are delivered to and collected
  * from a station by Enginers.
  * 
@@ -24,7 +26,7 @@ public class Station extends Location {
 		this.gem = false;
 	}
 
-	// Allows an Engine to collect Cart from the Station once loaded with a gem.
+	// Allows an src.main.java.mine.Engine to collect src.main.java.mine.Cart from the src.main.java.mine.Station once loaded with a gem.
 	@Override
 	public synchronized Cart collect() throws InterruptedException {
 		
@@ -48,7 +50,7 @@ public class Station extends Location {
 		return c;
 	}
 
-	// Allows an Engine to deliver a Cart to the Station once there is no other cart.
+	// Allows an src.main.java.mine.Engine to deliver a src.main.java.mine.Cart to the src.main.java.mine.Station once there is no other cart.
 	@Override
 	public synchronized void deliver(Cart cart) throws InterruptedException {
 
@@ -62,7 +64,7 @@ public class Station extends Location {
 		notifyAll();		
 	}
 
-	// Allows a miner to deposity a gem at the Station once the previous gem has been taken.
+	// Allows a miner to deposity a gem at the src.main.java.mine.Station once the previous gem has been taken.
 	public synchronized void depositGem() throws InterruptedException {
 		
 		// wait while the station is full

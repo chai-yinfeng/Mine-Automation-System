@@ -1,5 +1,7 @@
+package mine;
+
 /**
- * The Location is an abstract base class (Station or Elevator) that
+ * The src.main.java.mine.Location is an abstract base class (src.main.java.mine.Station or src.main.java.mine.Elevator) that
  * Carts can be delivered to and collected from.
  * 
  * @author ngeard@unimelb.edu.au

@@ -1,3 +1,5 @@
+package mine;
+
 /**
  * A class holding several important parameters governing the behaviour
  * of the mine simulator.
