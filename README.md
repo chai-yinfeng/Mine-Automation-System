@@ -27,14 +27,18 @@ mvn exec:java
 export PATH=~/cbmc-git/jbmc/src/jbmc:$PATH
 
 jbmc mine.StationJBMCVerification \
-  --classpath target/classes:target/test-classes \
-  --unwind 3 --trace
+  --classpath target/test-classes:target/classes \
+  --unwind 3 \
+  --no-unwinding-assertions \
+  --trace
 
-# Run fuzzer
+# Run fuzzer (bin)
 JAZZER=~/jazzer-bin/jazzer
 
 $JAZZER --cp="target/classes:target/test-classes" \
         --target_class=mine.StationFuzz \
         --uses_fuzzed_data_provider=1
+
+# Run fuzzer (JUnit)
 
 ```
