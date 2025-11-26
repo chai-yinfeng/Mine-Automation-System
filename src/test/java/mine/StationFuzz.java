@@ -3,10 +3,10 @@ package mine;
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
 
-class StationFuzz {
+public class StationFuzz {
 
     @FuzzTest(maxDuration = "20s")
-    void fuzzStation(FuzzedDataProvider data) {
+    public void fuzzStation(FuzzedDataProvider data) {
         Station s = new Station(0);
         int steps = data.consumeInt(0, 50);
 
