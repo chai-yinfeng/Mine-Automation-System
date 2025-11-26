@@ -24,9 +24,17 @@ mvn -q -DskipTests package
 mvn exec:java
 
 # Run verification
-jbmc -classpath target/classes:target/test-classes mine.StationJBMCVerification
+export PATH=~/cbmc-git/jbmc/src/jbmc:$PATH
+
+jbmc mine.StationJBMCVerification \
+  --classpath target/classes:target/test-classes \
+  --unwind 3 --trace
 
 # Run fuzzer
-jazzer --cp="target/classes:target/test-classes" --target_class=mine.StationFuzz
+JAZZER=~/jazzer-bin/jazzer
+
+$JAZZER --cp="target/classes:target/test-classes" \
+        --target_class=mine.StationFuzz \
+        --uses_fuzzed_data_provider=1
 
 ```
