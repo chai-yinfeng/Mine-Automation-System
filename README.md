@@ -40,5 +40,17 @@ $JAZZER --cp="target/classes:target/test-classes" \
         --uses_fuzzed_data_provider=1
 
 # Run fuzzer (JUnit)
+# --- Regression mode ---
+# Run all tests（including @Test and @FuzzTest）
+mvn test
+
+# Only run fuzz class
+mvn -Dtest=mine.StationFuzz test
+
+# --- Fuzzing mode ---
+export JAZZER_FUZZ=1
+
+# Run JUnit as usual
+mvn -Dtest=mine.StationFuzz test
 
 ```
