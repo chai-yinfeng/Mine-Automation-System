@@ -54,3 +54,25 @@ export JAZZER_FUZZ=1
 mvn -Dtest=mine.StationFuzz test
 
 ```
+---
+
+command to run jazzer for the `MineFuzzTarget.java`
+
+need `jazzer cli` installed explicitly!
+
+```bash
+# compile the whole project
+mvn -q -DskipTests test-compile
+
+# let maven to generate the classpath.
+# `test-classes` must in prior of `classes`, incase for implecit override. 
+CP="target/test-classes:target/classes:$(mvn -q -DincludeScope=test dependency:build-classpath -Dmdep.path)"
+
+# Fuzz the mine.MineFuzzTarget by Fuzzer CLI
+jazzer \
+  --cp="$CP" \
+  --target_class=mine.MineFuzzTarget \
+  --instrumentation_includes='mine.**' \
+  --reproducer_path=target/jazzer-repros \
+  -max_total_time=120
+```
