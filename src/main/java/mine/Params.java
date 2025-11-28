@@ -1,12 +1,14 @@
 package mine;
 
+import java.util.Random;
+
 /**
  * A class holding several important parameters governing the behaviour
  * of the mine simulator.
- * 
+ *
  * You should experiment with different scenarios by varying the values of
  * these parameters, particularly those governing the timing of various events.
- * 
+ *
  * @author ngeard@unimelb.edu.au
  * @date 6 March 2025
  */
@@ -38,29 +40,49 @@ public class Params {
 	
 	// the maximum amount of time the miner pauses before producing next gem
 	public static final int MAX_MINER_PAUSE = 200;
-	
-	// the following functions assume uniformly distributed pause durations
-	
-	// the time between arrival of carts to the mine
-	public static long arrivalPause() {
-		Random random = new Random();
-		return random.nextInt(MAX_ARRIVAL_PAUSE);
-	}
 
-	// the time between departure of carts from the mine
-	public static long departurePause() {
-		Random random = new Random();
-		return random.nextInt(MAX_DEPARTURE_PAUSE);
-	}
+    private static PauseProvider provider = new RandomPauseProvider();
 
-	public static long operatorPause() {
-		Random random = new Random();
-		return random.nextInt(MAX_ELEVATOR_PAUSE);
-	}
-	
-	public static long minerPause() {
-		Random random = new Random();
-		return random.nextInt(MAX_MINER_PAUSE);
-	}
+    public static void setPauseProvider(PauseProvider p) {
+        provider = p;
+    }
+    public static void resetPauseProvider() {
+        provider = new RandomPauseProvider();
+    }
+
+    // delegate the methods to the provider
+    public static long arrivalPause() {
+        return provider.arrivalPause();
+    }
+    public static long departurePause() {
+        return provider.departurePause();
+    }
+    public static long operatorPause() {
+        return provider.operatorPause();
+    }
+    public static long minerPause() {
+        return provider.minerPause();
+    }
+
+    // random implementation
+    private static class RandomPauseProvider implements PauseProvider {
+        private final Random r = new Random();
+        @Override
+        public long arrivalPause() {
+            return r.nextInt(MAX_ARRIVAL_PAUSE);
+        }
+        @Override
+        public long departurePause() {
+            return r.nextInt(MAX_DEPARTURE_PAUSE);
+        }
+        @Override
+        public long operatorPause() {
+            return r.nextInt(MAX_ELEVATOR_PAUSE);
+        }
+        @Override
+        public long minerPause() {
+            return r.nextInt(MAX_MINER_PAUSE);
+        }
+    }
 }
 
