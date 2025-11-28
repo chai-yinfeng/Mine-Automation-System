@@ -1,6 +1,8 @@
 package mine;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
+
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -68,4 +70,19 @@ public class SequencePauseProvider implements PauseProvider {
         return pick(minerSeq, minerIdx,
                 minerSeq[minerSeq.length - 1]);
     }
+
+    @Override
+    public String toString() {
+        return "SequencePauseProvider{\n" +
+                "  arrivalSeq=" + Arrays.toString(arrivalSeq) +
+                " [index:" + arrivalIdx.get() + "]\n" +
+                "  departureSeq=" + Arrays.toString(departureSeq) +
+                " [index:" + departureIdx.get() + "]\n" +
+                "  operatorSeq=" + Arrays.toString(operatorSeq) +
+                " [index:" + operatorIdx.get() + "]\n" +
+                "  minerSeq=" + Arrays.toString(minerSeq) +
+                " [index:" + minerIdx.get() + "]\n" +
+                "}";
+    }
+
 }
