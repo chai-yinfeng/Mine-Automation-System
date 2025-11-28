@@ -10,5 +10,8 @@ public final class MineLogger {
 
     public static void log(String component, String message) {
         // no-op: ignore logging in formal verification
+
+        // log for mine progresses, for deadlock monitor.
+        MineProgress.report();
     }
 }
