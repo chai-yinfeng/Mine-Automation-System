@@ -36,7 +36,7 @@ jbmc mine.StationJBMCVerification \
 JAZZER=~/jazzer-bin/jazzer
 
 $JAZZER --cp="target/classes:target/test-classes" \
-        --target_class=mine.StationFuzz \
+        --target_class=mine.MineSystemFuzz \
         --uses_fuzzed_data_provider=1
 
 # Run fuzzer (JUnit)
@@ -45,13 +45,13 @@ $JAZZER --cp="target/classes:target/test-classes" \
 mvn test
 
 # Only run fuzz class
-mvn -Dtest=mine.StationFuzz test
+mvn -Dtest=mine.MineSystemFuzz test
 
 # --- Fuzzing mode ---
 export JAZZER_FUZZ=1
 
 # Run JUnit as usual
-mvn -Dtest=mine.StationFuzz test
+mvn -Dtest=mine.MineSystemFuzz test
 
 ```
 ---
