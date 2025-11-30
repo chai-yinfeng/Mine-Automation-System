@@ -45,6 +45,8 @@ $JAZZER --cp="target/classes:target/test-classes" \
 mvn test
 
 # Only run fuzz class
+#unset JAZZER_FUZZ
+
 mvn -Dtest=mine.MineSystemFuzz test
 
 # --- Fuzzing mode ---
