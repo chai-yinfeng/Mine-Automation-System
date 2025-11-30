@@ -7,6 +7,8 @@ public class MineFuzzTarget {
     /**
      * Fuzz entry point.
      */
+    private static final long MAX_RUN_MS = 15000;
+
     public static void fuzzerTestOneInput(FuzzedDataProvider data) {
 
         if (data.remainingBytes() < 8) {
@@ -14,7 +16,7 @@ public class MineFuzzTarget {
         }
 
         // 1. Decode fuzz input into timing sequences + run time bound
-        long maxRunMs = data.consumeLong(1000, 5000); // total simulation time
+//        long maxRunMs = data.consumeLong(1000, 5000); // total simulation time
         SequencePauseProvider provider = new SequencePauseProvider(data);
 
         // 2. Install fuzz-driven pause provider
@@ -28,12 +30,12 @@ public class MineFuzzTarget {
         sim.startAll();
 
         // 5. Watch for deadlock / stall
-        DeadlockWatcher watcher = new DeadlockWatcher(maxRunMs);
+        DeadlockWatcher watcher = new DeadlockWatcher(MAX_RUN_MS);
         try {
             watcher.watch();
         } catch (AssertionError e) {
             // Print the fuzzed parameters for debugging
-            System.out.println("maxRunMs = " + maxRunMs);
+            System.out.println("maxRunMs = " + MAX_RUN_MS);
             System.out.println(provider);
             throw e; // Continue throwing to let Jazzer record it as a finding.
         } finally {

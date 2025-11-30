@@ -17,8 +17,7 @@ public class DeadlockWatcher {
         long lastProgress = MineProgress.snapshot();
         long lastProgressTime = start;
 
-//        while (System.currentTimeMillis() - start < maxRunMs) {
-        while (true) {
+        while (System.currentTimeMillis() - start < maxRunMs) {
             long[] deadlocked = bean.findDeadlockedThreads();
             if (deadlocked != null) {
                 throw new AssertionError("Monitor deadlock detected");
@@ -32,7 +31,7 @@ public class DeadlockWatcher {
             }
 
             // If no progress for a long time, treat as liveness failure
-            long noProgressLimit = Math.max(maxRunMs / 2, 10000); // 至少 2s
+            long noProgressLimit = Math.max(maxRunMs / 2, 5000);
             if (now - lastProgressTime > noProgressLimit) {
                 throw new AssertionError("No progress for too long (possible logical deadlock)");
             }
