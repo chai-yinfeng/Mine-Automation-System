@@ -1,4 +1,7 @@
-package mine;
+package mine.formal;
+
+import mine.Cart;
+import mine.Station;
 
 /**
  * JBMC harness for verifying basic Station + Cart properties.
@@ -15,7 +18,7 @@ package mine;
  *
  * [MODIFIED - FORMAL VERIFICATION HARNESS]
  */
-public class StationJBMCVerification {
+public class StationJBMCHappyPath {
 
     public static void main(String[] args) throws Exception {
         Station s = new Station(0);
@@ -42,7 +45,7 @@ public class StationJBMCVerification {
         assert c1 == c0;
 
         // property 2: exactly one gem added (new carts start with 0 gems)
-        assert c1.gems == 1;
+        assert c1.getGems() == 1;
 
         // property 3: station is empty again
         assert !s.hasCart();

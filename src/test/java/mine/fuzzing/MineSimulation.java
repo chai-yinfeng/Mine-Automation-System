@@ -1,4 +1,6 @@
-package mine;
+package mine.fuzzing;
+
+import mine.*;
 
 public class MineSimulation {
 

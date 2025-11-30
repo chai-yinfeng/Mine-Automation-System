@@ -26,17 +26,34 @@ mvn exec:java
 # Run verification
 export PATH=~/cbmc-git/jbmc/src/jbmc:$PATH
 
-jbmc mine.StationJBMCVerification \
-  --classpath target/test-classes:target/classes \
+mvn -q -DskipTests test-compile
+
+CP="target/test-classes:target/classes"
+
+jbmc mine.formal.StationJBMCVerification \
+  --classpath "$CP" \
   --unwind 3 \
   --no-unwinding-assertions \
   --trace
+
+jbmc mine.formal.CartJBMCVerification \
+  --classpath "$CP" \
+  --unwind 3 \
+  --no-unwinding-assertions \
+  --trace
+
+jbmc mine.formal.ElevatorJBMCVerification \
+  --classpath "$CP" \
+  --unwind 4 \
+  --no-unwinding-assertions \
+  --trace
+
 
 # Run fuzzer (bin)
 JAZZER=~/jazzer-bin/jazzer
 
 $JAZZER --cp="target/classes:target/test-classes" \
-        --target_class=mine.MineSystemFuzz \
+        --target_class=mine.fuzzing.MineSystemFuzz \
         --uses_fuzzed_data_provider=1
 
 # Run fuzzer (JUnit)
@@ -47,13 +64,13 @@ mvn test
 # Only run fuzz class
 #unset JAZZER_FUZZ
 
-mvn -Dtest=mine.MineSystemFuzz test
+mvn -Dtest=mine.fuzzing.MineSystemFuzz test
 
 # --- Fuzzing mode ---
 export JAZZER_FUZZ=1
 
 # Run JUnit as usual
-mvn -Dtest=mine.MineSystemFuzz test
+mvn -Dtest=mine.fuzzing.MineSystemFuzz test
 
 ```
 ---
@@ -70,10 +87,10 @@ mvn -q -DskipTests test-compile
 # `test-classes` must in prior of `classes`, incase for implecit override. 
 CP="target/test-classes:target/classes:$(mvn -q -DincludeScope=test dependency:build-classpath -Dmdep.path)"
 
-# Fuzz the mine.MineFuzzTarget by Fuzzer CLI
+# Fuzz the mine.fuzzing.MineFuzzTarget by Fuzzer CLI
 jazzer \
   --cp="$CP" \
-  --target_class=mine.MineFuzzTarget \
+  --target_class=mine.fuzzing.MineFuzzTarget \
   --instrumentation_includes='mine.**' \
   --reproducer_path=target/jazzer-repros \
   -max_total_time=120

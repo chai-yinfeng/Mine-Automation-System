@@ -11,6 +11,8 @@ public class Elevator extends Location {
 
 	// the current location of the elevator car
 	protected String current = "top";
+	// boolean mirror of the current position, used for verification
+	private boolean atTop = true;
 	
 	// the cart currently in the elevator (if any)
 	private Cart cart = null;
@@ -18,8 +20,10 @@ public class Elevator extends Location {
 	// Operates the elevator, moving it from the top to the bottom of the shaft.
 	public synchronized void operate() {
 		
-		if ("top".equals(this.current)) {
+//		if ("top".equals(this.current)) {
+		if (atTop) {
 			this.current = "bottom";
+			this.atTop = false;
 			if (this.cart != null) {
 				// [LOGGING] elevator descends with cart
 				MineLogger.log("ELEVATOR", "descends with " + this.cart);
@@ -30,6 +34,7 @@ public class Elevator extends Location {
 		}
 		else {
 			this.current = "top";
+			this.atTop = true;
 			if (this.cart != null) {
 				// [LOGGING] elevator ascends with cart
 				MineLogger.log("ELEVATOR", "ascends with " + this.cart);
@@ -57,7 +62,8 @@ public class Elevator extends Location {
 	// elevator present and empty.
 	public synchronized void arrive(Cart cart) throws InterruptedException {
 			
-		while (this.cart != null || "bottom".equals(this.current)) {
+//		while (this.cart != null || "bottom".equals(this.current)) {
+		while (this.cart == null || !atTop) {
 			wait();
 		}
 		
@@ -71,7 +77,8 @@ public class Elevator extends Location {
 	// elevator present and not empty.
 	public synchronized Cart depart() throws InterruptedException {
 		
-		while (this.cart == null || "bottom".equals(this.current)) {
+//		while (this.cart == null || "bottom".equals(this.current)) {
+		while (this.cart == null || !atTop) {
 			wait();
 		}
 		
@@ -87,7 +94,8 @@ public class Elevator extends Location {
 	@Override
 	public synchronized Cart collect() throws InterruptedException {
 		
-		while (this.cart == null || "top".equals(this.current)) {
+//		while (this.cart == null || "top".equals(this.current)) {
+		while  (this.cart == null || atTop) {
 			wait();
 		}
 		
@@ -105,7 +113,8 @@ public class Elevator extends Location {
 	@Override
 	public synchronized void deliver(Cart cart) throws InterruptedException {
 		
-		while (this.cart != null || "top".equals(this.current)) {
+//		while (this.cart != null || "top".equals(this.current)) {
+		while (this.cart == null || atTop) {
 			wait();
 		}
 			
@@ -117,4 +126,23 @@ public class Elevator extends Location {
 				
 	}
 
+	// --- [FORMAL-VERIFICATION] Observation helpers ---
+
+	public boolean hasCart() {
+		return cart != null;
+	}
+
+	/** True iff the elevator car is currently at the top of the shaft. */
+	public boolean isAtTop() {
+		return atTop;
+	}
+
+	/** True iff the elevator car is currently at the bottom of the shaft. */
+	public boolean isAtBottom() {
+		return !atTop;
+	}
+
+	public String getPosition() {
+		return current;
+	}
 }

@@ -1,4 +1,4 @@
-package mine;
+package mine.fuzzing;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;

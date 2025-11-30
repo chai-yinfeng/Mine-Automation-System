@@ -1,6 +1,8 @@
-package mine;
+package mine.fuzzing;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
+import mine.Params;
+import mine.PauseProvider;
 
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;

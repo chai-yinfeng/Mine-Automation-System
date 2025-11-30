@@ -35,4 +35,15 @@ public class Cart {
 		return "cart [" + id + ": " + gems + "]";
 	}
 
+	// --- [FORMAL-VERIFICATION] Helper getters for JBMC & tests ---
+
+	/** Expose the current gem count for verification and testing. */
+	public int getGems() {
+		return gems;
+	}
+
+	/** Expose the cart id for verification and testing. */
+	public int getId() {
+		return id;
+	}
 }

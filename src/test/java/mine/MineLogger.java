@@ -1,5 +1,7 @@
 package mine;
 
+import mine.fuzzing.MineProgress;
+
 /**
  * JBMC stub logger: no I/O, no assertions.
  * Only used during bounded model checking.

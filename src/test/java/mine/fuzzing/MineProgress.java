@@ -1,4 +1,4 @@
-package mine;
+package mine.fuzzing;
 
 import java.util.concurrent.atomic.AtomicLong;
 
