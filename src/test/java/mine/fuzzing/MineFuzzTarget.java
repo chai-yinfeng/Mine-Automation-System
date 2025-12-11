@@ -62,28 +62,56 @@ public class MineFuzzTarget {
 
         // 2. Build the simulation (threads are constructed but not started)
         MineSimulation sim = new MineSimulation();
-
-        // 3. Use fuzz input to decide which threads to start, and in what order
-        int threadCount = sim.threadCount();
-        if (threadCount == 0) {
-            return;
+        
+        // 3. Initialize token-based fuzzing infrastructure
+        ThreadTokenRegistry registry = new ThreadTokenRegistry();
+        sim.registerThreadTokens(registry);
+        
+        // 4. Optionally use token-driven thread selection
+        // This demonstrates how tokens enable role-based fuzzing
+        boolean useTokenControl = data.remainingBytes() > 1 && data.consumeBoolean();
+        
+        if (useTokenControl && data.remainingBytes() > 4) {
+            // Token-driven approach: select threads by role and instance
+            int numStarts = data.consumeInt(1, sim.threadCount());
+            for (int i = 0; i < numStarts && data.remainingBytes() > 1; i++) {
+                // Pick a role
+                int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
+                ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
+                
+                // Pick an instance of that role
+                int instanceId = data.consumeInt(0, 3); // max 4 instances of any role
+                ThreadToken token = new ThreadToken(role, instanceId);
+                Thread t = registry.getThread(token);
+                if (t != null) {
+                    // Find the thread index and start it
+                    Thread[] allThreads = sim.getAllThreads();
+                    for (int j = 0; j < allThreads.length; j++) {
+                        if (allThreads[j] == t) {
+                            sim.startThread(j);
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            // Original index-based approach
+            int threadCount = sim.threadCount();
+            if (threadCount == 0) {
+                return;
+            }
+            
+            int steps = data.consumeInt(1, 4 * threadCount);
+            for (int i = 0; i < steps && data.remainingBytes() > 0; i++) {
+                int idx = data.consumeInt(0, threadCount - 1);
+                sim.startThread(idx);
+            }
         }
 
-        // Bound how many "start steps" we take from the input
-        int steps = data.consumeInt(1, 4 * threadCount);
-        for (int i = 0; i < steps && data.remainingBytes() > 0; i++) {
-            int idx = data.consumeInt(0, threadCount - 1);
-            sim.startThread(idx);
-        }
-
-        // Optionally: ensure at least producer/consumer are started
-        // sim.startThread(0); // producer
-        // sim.startThread(1); // consumer
-
-        // Optionally: start all remaining threads to get a "full" system after fuzzed prefix
+        // Start all remaining threads to get a "full" system after fuzzed prefix
         sim.startAllRemaining();
 
-        // 4. Watch for deadlock / stall
+        // 5. Watch for deadlock / stall
         DeadlockWatcher watcher = new DeadlockWatcher(MAX_RUN_MS);
         try {
             watcher.watch();
