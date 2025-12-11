@@ -78,15 +78,13 @@ public class FuzzingTokenController implements TokenController {
         }
         
         // If gating is enabled, wait for permission to proceed
+        boolean acquiredPermission = true;
         if (useGating) {
             Semaphore gate = iterationGates.get(roleKey);
             if (gate != null) {
                 try {
                     // Wait for permission with timeout to prevent fuzzer hanging
-                    if (!gate.tryAcquire(gateTimeoutMs, TimeUnit.MILLISECONDS)) {
-                        // Timeout - proceed anyway to avoid fuzzer hanging
-                        return;
-                    }
+                    acquiredPermission = gate.tryAcquire(gateTimeoutMs, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;
@@ -95,6 +93,7 @@ public class FuzzingTokenController implements TokenController {
         }
         
         // Apply fuzz-driven delay using the captured iteration number
+        // (even if timed out, we still apply delay for consistent behavior)
         long delay = getDelayForIteration(roleKey, currentIteration);
         if (delay > 0) {
             try {
@@ -102,6 +101,11 @@ public class FuzzingTokenController implements TokenController {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+        }
+        
+        // If gating timed out, interrupt to signal potential deadlock
+        if (useGating && !acquiredPermission) {
+            Thread.currentThread().interrupt();
         }
     }
     
