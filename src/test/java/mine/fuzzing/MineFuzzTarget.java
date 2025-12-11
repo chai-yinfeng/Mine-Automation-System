@@ -103,6 +103,8 @@ public class MineFuzzTarget {
         if (useGating) {
             // Release a sequence of iterations to explore specific interleavings
             int releaseSteps = data.remainingBytes() > 4 ? data.consumeInt(5, 30) : 10;
+            long releaseDelay = data.remainingBytes() > 4 ? data.consumeLong(5, 20) : 10;
+            
             for (int i = 0; i < releaseSteps && data.remainingBytes() > 1; i++) {
                 // Pick a role to release
                 int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
@@ -112,9 +114,9 @@ public class MineFuzzTarget {
                 int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
                 controller.releaseIterations(role, count);
                 
-                // Small delay between releases to let threads execute
+                // Delay between releases to let threads execute (fuzz-controlled)
                 try {
-                    Thread.sleep(10);
+                    Thread.sleep(releaseDelay);
                 } catch (InterruptedException e) {
                     break;
                 }

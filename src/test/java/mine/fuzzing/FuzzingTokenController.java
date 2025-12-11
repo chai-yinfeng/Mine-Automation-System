@@ -22,6 +22,7 @@ public class FuzzingTokenController implements TokenController {
     private final long defaultDelay;
     private final int maxIterationsPerThread;
     private final boolean useGating;
+    private final long gateTimeoutMs;
     
     /**
      * Create a fuzzing controller with fine-grained loop control.
@@ -34,6 +35,7 @@ public class FuzzingTokenController implements TokenController {
         this.useGating = useGating;
         this.defaultDelay = data.remainingBytes() > 4 ? data.consumeLong(0, 50) : 0;
         this.maxIterationsPerThread = data.remainingBytes() > 4 ? data.consumeInt(5, 20) : 10;
+        this.gateTimeoutMs = 2000; // Shorter timeout for fuzzing
         
         // Generate delay sequences for each role
         if (data.remainingBytes() > 8) {
@@ -62,13 +64,14 @@ public class FuzzingTokenController implements TokenController {
         
         String roleKey = token.getRole().name();
         
-        // Track iteration count
+        // Track iteration count and get current iteration number atomically
         AtomicInteger counter = iterationCounters.get(roleKey);
+        int currentIteration = -1;
         if (counter != null) {
-            int iteration = counter.getAndIncrement();
+            currentIteration = counter.getAndIncrement();
             
             // Stop thread after max iterations to prevent infinite running
-            if (iteration >= maxIterationsPerThread) {
+            if (currentIteration >= maxIterationsPerThread) {
                 Thread.currentThread().interrupt();
                 return;
             }
@@ -79,8 +82,8 @@ public class FuzzingTokenController implements TokenController {
             Semaphore gate = iterationGates.get(roleKey);
             if (gate != null) {
                 try {
-                    // Wait up to 5 seconds for permission (prevents deadlock in fuzzer)
-                    if (!gate.tryAcquire(5, TimeUnit.SECONDS)) {
+                    // Wait for permission with timeout to prevent fuzzer hanging
+                    if (!gate.tryAcquire(gateTimeoutMs, TimeUnit.MILLISECONDS)) {
                         // Timeout - proceed anyway to avoid fuzzer hanging
                         return;
                     }
@@ -91,8 +94,8 @@ public class FuzzingTokenController implements TokenController {
             }
         }
         
-        // Apply fuzz-driven delay
-        long delay = getDelayForIteration(token);
+        // Apply fuzz-driven delay using the captured iteration number
+        long delay = getDelayForIteration(roleKey, currentIteration);
         if (delay > 0) {
             try {
                 Thread.sleep(delay);
@@ -138,20 +141,13 @@ public class FuzzingTokenController implements TokenController {
         // Hook available for future fine-grained control
     }
     
-    private long getDelayForIteration(ThreadToken token) {
-        String roleKey = token.getRole().name();
+    private long getDelayForIteration(String roleKey, int iteration) {
         long[] delays = delaySequences.get(roleKey);
-        if (delays == null || delays.length == 0) {
+        if (delays == null || delays.length == 0 || iteration < 0) {
             return defaultDelay;
         }
         
-        AtomicInteger counter = iterationCounters.get(roleKey);
-        if (counter == null) {
-            return defaultDelay;
-        }
-        
-        int iteration = counter.get() - 1; // We already incremented
-        if (iteration < 0 || iteration >= delays.length) {
+        if (iteration >= delays.length) {
             return delays[delays.length - 1]; // Use last delay
         }
         
