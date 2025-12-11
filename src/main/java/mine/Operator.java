@@ -20,6 +20,10 @@ public class Operator extends Thread {
 	public void run() {
 		while (!isInterrupted()) {
 			try {
+				// [FUZZING-HOOK] Allow token-based control of loop iteration
+				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
+					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+				
 				sleep(Params.ELEVATOR_TIME);
 				
 				// update the status of the elevator

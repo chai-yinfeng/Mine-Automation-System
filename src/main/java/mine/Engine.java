@@ -24,6 +24,10 @@ public class Engine extends Thread {
 	public void run() {
 		while (!this.isInterrupted()) {
 			try {
+				// [FUZZING-HOOK] Allow token-based control of loop iteration
+				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
+					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+				
 				// collect a cart from the origin
 				Cart cart = this.origin.collect();
 				

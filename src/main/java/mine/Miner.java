@@ -18,6 +18,10 @@ public class Miner extends Thread {
     public void run() {
         while (!this.isInterrupted()) {
             try {
+                // [FUZZING-HOOK] Allow token-based control of loop iteration
+                mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
+                    mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+                
                 sleep(Params.MINING_TIME);
 
                 // deposit mined gem at station

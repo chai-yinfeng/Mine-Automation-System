@@ -135,30 +135,60 @@ The token-controlled fuzzing extension enables fuzz-driven exploration of thread
 
 ### Usage
 
-#### Token-Based Thread Selection in Fuzzing
+#### Fine-Grained Loop Iteration Control
 
-The `MineFuzzTarget` demonstrates token-based fuzzing:
+The token fuzzing extension provides two modes of operation:
 
+**1. Free-Running Mode (default)**
 ```java
-// Initialize token registry
+// Initialize registry and controller
 ThreadTokenRegistry registry = new ThreadTokenRegistry();
 sim.registerThreadTokens(registry);
+TokenControllerProvider.setRegistry(registry);
 
-// Select threads by role (fuzz-driven)
-ThreadToken.Role role = /* choose from fuzz input */;
-int instanceId = /* choose from fuzz input */;
-ThreadToken token = new ThreadToken(role, instanceId);
-Thread t = registry.getThread(token);
-// Start thread when desired
+// Controller injects fuzz-driven delays at each loop iteration
+FuzzingTokenController controller = new FuzzingTokenController(data, registry, false);
+TokenControllerProvider.setController(controller);
+
+sim.startAll(); // Threads run with token-controlled delays
+```
+
+**2. Gated Iteration Mode (for controlled interleaving)**
+```java
+// Enable gating - threads wait for explicit permission per iteration
+FuzzingTokenController controller = new FuzzingTokenController(data, registry, true);
+TokenControllerProvider.setController(controller);
+
+sim.startAll(); // Threads start but wait at loop entry
+
+// Release specific thread iterations from fuzz input
+for (int i = 0; i < releaseSteps; i++) {
+    ThreadToken.Role role = /* select from fuzz input */;
+    controller.releaseIterations(role, 1); // Allow one iteration
+    Thread.sleep(10); // Let thread execute
+}
+```
+
+**Loop Hooks in Thread Classes:**
+Each thread class now has a hook at the start of its while loop:
+```java
+while (!this.isInterrupted()) {
+    // [FUZZING-HOOK] Token-based control
+    TokenControllerProvider.getController().onLoopIteration(
+        TokenControllerProvider.getRegistry().getCurrentThreadToken());
+    
+    // ... thread work ...
+}
 ```
 
 #### Benefits
 
-1. **Role-based fuzzing**: Target specific thread types (e.g., all miners, specific engine)
-2. **Reproducible testing**: Token-based selection enables deterministic thread scheduling
-3. **Zero overhead**: No-op default ensures normal simulation is unaffected
-4. **Flexible control**: Easy to add new fuzzing strategies without modifying thread code
-5. **Compatible**: Works with existing DeadlockWatcher and MineProgress monitors
+1. **Fine-grained control**: Control individual loop iterations, not just thread starts
+2. **Reproducible interleavings**: Deterministically explore specific thread execution orders
+3. **Deadlock detection**: Test controlled scenarios that trigger race conditions
+4. **Role-based fuzzing**: Target specific thread types (e.g., all miners, specific engine)
+5. **Zero overhead**: NoOpTokenController default ensures normal simulation is unaffected
+6. **Minimal changes**: Single hook line per thread class, no structural modifications
 
 ### Integration with Existing Fuzzing
 

@@ -66,25 +66,27 @@ public class MineFuzzTarget {
         // 3. Initialize token-based fuzzing infrastructure
         ThreadTokenRegistry registry = new ThreadTokenRegistry();
         sim.registerThreadTokens(registry);
+        TokenControllerProvider.setRegistry(registry);
         
-        // 4. Optionally use token-driven thread selection
-        // This demonstrates how tokens enable role-based fuzzing
-        boolean useTokenControl = data.remainingBytes() > 1 && data.consumeBoolean();
+        // 4. Decide fuzzing mode: gated iteration control or free-running with delays
+        boolean useGating = data.remainingBytes() > 1 && data.consumeBoolean();
+        FuzzingTokenController controller = new FuzzingTokenController(data, registry, useGating);
+        TokenControllerProvider.setController(controller);
         
-        if (useTokenControl && data.remainingBytes() > 4) {
-            // Token-driven approach: select threads by role and instance
+        // 5. Start threads - all or subset based on fuzz input
+        boolean startAll = data.remainingBytes() > 1 ? data.consumeBoolean() : true;
+        if (startAll) {
+            sim.startAll();
+        } else {
+            // Start subset of threads based on token selection
             int numStarts = data.consumeInt(1, sim.threadCount());
             for (int i = 0; i < numStarts && data.remainingBytes() > 1; i++) {
-                // Pick a role
                 int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
                 ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
-                
-                // Pick an instance of that role
-                int instanceId = data.consumeInt(0, 3); // max 4 instances of any role
+                int instanceId = data.consumeInt(0, 3);
                 ThreadToken token = new ThreadToken(role, instanceId);
                 Thread t = registry.getThread(token);
                 if (t != null) {
-                    // Find the thread index and start it
                     Thread[] allThreads = sim.getAllThreads();
                     for (int j = 0; j < allThreads.length; j++) {
                         if (allThreads[j] == t) {
@@ -94,36 +96,52 @@ public class MineFuzzTarget {
                     }
                 }
             }
-        } else {
-            // Original index-based approach
-            int threadCount = sim.threadCount();
-            if (threadCount == 0) {
-                return;
-            }
-            
-            int steps = data.consumeInt(1, 4 * threadCount);
-            for (int i = 0; i < steps && data.remainingBytes() > 0; i++) {
-                int idx = data.consumeInt(0, threadCount - 1);
-                sim.startThread(idx);
+            sim.startAllRemaining();
+        }
+        
+        // 6. If using gated control, release iterations based on fuzz input
+        if (useGating) {
+            // Release a sequence of iterations to explore specific interleavings
+            int releaseSteps = data.remainingBytes() > 4 ? data.consumeInt(5, 30) : 10;
+            for (int i = 0; i < releaseSteps && data.remainingBytes() > 1; i++) {
+                // Pick a role to release
+                int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
+                ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
+                
+                // Release 1-3 iterations for this role
+                int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
+                controller.releaseIterations(role, count);
+                
+                // Small delay between releases to let threads execute
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    break;
+                }
             }
         }
 
-        // Start all remaining threads to get a "full" system after fuzzed prefix
-        sim.startAllRemaining();
-
-        // 5. Watch for deadlock / stall
+        // 7. Watch for deadlock / stall
         DeadlockWatcher watcher = new DeadlockWatcher(MAX_RUN_MS);
         try {
             watcher.watch();
         } catch (AssertionError e) {
             System.out.println("maxRunMs = " + MAX_RUN_MS);
             System.out.println(provider);
+            System.out.println("Gating enabled: " + useGating);
+            if (useGating) {
+                System.out.println("Iteration counts:");
+                for (ThreadToken.Role role : ThreadToken.Role.values()) {
+                    System.out.println("  " + role + ": " + controller.getIterationCount(role));
+                }
+            }
             throw e;
         } finally {
             try {
                 sim.stopAll();
             } catch (InterruptedException ignored) {}
             Params.resetPauseProvider();
+            TokenControllerProvider.reset();
         }
     }
 }
