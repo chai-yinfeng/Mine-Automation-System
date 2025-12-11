@@ -25,6 +25,10 @@ public class Consumer extends Thread {
 	public void run() {
 		while(!this.isInterrupted()) {
 			try {
+				// [FUZZING-HOOK] Allow token-based control of loop iteration
+				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
+					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+				
 				// remove a cart from the elevator
 				Cart c = this.elevator.depart();
 				// [LOGGING] cart departs from mine

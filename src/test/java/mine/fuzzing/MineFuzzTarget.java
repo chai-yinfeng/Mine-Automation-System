@@ -62,40 +62,88 @@ public class MineFuzzTarget {
 
         // 2. Build the simulation (threads are constructed but not started)
         MineSimulation sim = new MineSimulation();
-
-        // 3. Use fuzz input to decide which threads to start, and in what order
-        int threadCount = sim.threadCount();
-        if (threadCount == 0) {
-            return;
+        
+        // 3. Initialize token-based fuzzing infrastructure
+        ThreadTokenRegistry registry = new ThreadTokenRegistry();
+        sim.registerThreadTokens(registry);
+        TokenControllerProvider.setRegistry(registry);
+        
+        // 4. Decide fuzzing mode: gated iteration control or free-running with delays
+        boolean useGating = data.remainingBytes() > 1 && data.consumeBoolean();
+        FuzzingTokenController controller = new FuzzingTokenController(data, registry, useGating);
+        TokenControllerProvider.setController(controller);
+        
+        // 5. Start threads - all or subset based on fuzz input
+        boolean startAll = data.remainingBytes() > 1 ? data.consumeBoolean() : true;
+        if (startAll) {
+            sim.startAll();
+        } else {
+            // Start subset of threads based on token selection
+            int numStarts = data.consumeInt(1, sim.threadCount());
+            for (int i = 0; i < numStarts && data.remainingBytes() > 1; i++) {
+                int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
+                ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
+                int instanceId = data.consumeInt(0, 3);
+                ThreadToken token = new ThreadToken(role, instanceId);
+                Thread t = registry.getThread(token);
+                if (t != null) {
+                    Thread[] allThreads = sim.getAllThreads();
+                    for (int j = 0; j < allThreads.length; j++) {
+                        if (allThreads[j] == t) {
+                            sim.startThread(j);
+                            break;
+                        }
+                    }
+                }
+            }
+            sim.startAllRemaining();
+        }
+        
+        // 6. If using gated control, release iterations based on fuzz input
+        if (useGating) {
+            // Release a sequence of iterations to explore specific interleavings
+            int releaseSteps = data.remainingBytes() > 4 ? data.consumeInt(5, 30) : 10;
+            long releaseDelay = data.remainingBytes() > 4 ? data.consumeLong(5, 20) : 10;
+            
+            for (int i = 0; i < releaseSteps && data.remainingBytes() > 1; i++) {
+                // Pick a role to release
+                int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
+                ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
+                
+                // Release 1-3 iterations for this role
+                int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
+                controller.releaseIterations(role, count);
+                
+                // Delay between releases to let threads execute (fuzz-controlled)
+                try {
+                    Thread.sleep(releaseDelay);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
         }
 
-        // Bound how many "start steps" we take from the input
-        int steps = data.consumeInt(1, 4 * threadCount);
-        for (int i = 0; i < steps && data.remainingBytes() > 0; i++) {
-            int idx = data.consumeInt(0, threadCount - 1);
-            sim.startThread(idx);
-        }
-
-        // Optionally: ensure at least producer/consumer are started
-        // sim.startThread(0); // producer
-        // sim.startThread(1); // consumer
-
-        // Optionally: start all remaining threads to get a "full" system after fuzzed prefix
-        sim.startAllRemaining();
-
-        // 4. Watch for deadlock / stall
+        // 7. Watch for deadlock / stall
         DeadlockWatcher watcher = new DeadlockWatcher(MAX_RUN_MS);
         try {
             watcher.watch();
         } catch (AssertionError e) {
             System.out.println("maxRunMs = " + MAX_RUN_MS);
             System.out.println(provider);
+            System.out.println("Gating enabled: " + useGating);
+            if (useGating) {
+                System.out.println("Iteration counts:");
+                for (ThreadToken.Role role : ThreadToken.Role.values()) {
+                    System.out.println("  " + role + ": " + controller.getIterationCount(role));
+                }
+            }
             throw e;
         } finally {
             try {
                 sim.stopAll();
             } catch (InterruptedException ignored) {}
             Params.resetPauseProvider();
+            TokenControllerProvider.reset();
         }
     }
 }

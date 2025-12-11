@@ -87,6 +87,47 @@ public class MineSimulation {
 
         started = new boolean[total];
     }
+    
+    /**
+     * Register thread tokens with the provided registry.
+     * Tokens enable fuzz-driven control without affecting normal simulation.
+     * 
+     * @param registry The token registry to use
+     */
+    public void registerThreadTokens(ThreadTokenRegistry registry) {
+        // Register producer, consumer, operator
+        registry.register(producer, new ThreadToken(ThreadToken.Role.PRODUCER, 0));
+        registry.register(consumer, new ThreadToken(ThreadToken.Role.CONSUMER, 0));
+        registry.register(operator, new ThreadToken(ThreadToken.Role.OPERATOR, 0));
+        
+        // Register miners
+        for (int i = 0; i < miners.length; i++) {
+            registry.register(miners[i], new ThreadToken(ThreadToken.Role.MINER, i));
+        }
+        
+        // Register engines
+        int engineId = 0;
+        for (Engine e : engines) {
+            registry.register(e, new ThreadToken(ThreadToken.Role.ENGINE, engineId++));
+        }
+        registry.register(firstEngine, new ThreadToken(ThreadToken.Role.ENGINE, engineId++));
+        registry.register(lastEngine, new ThreadToken(ThreadToken.Role.ENGINE, engineId++));
+    }
+    
+    /**
+     * Get thread by token from the registry.
+     * Helper for token-based thread control.
+     */
+    public Thread getThreadByToken(ThreadToken token, ThreadTokenRegistry registry) {
+        return registry.getThread(token);
+    }
+    
+    /**
+     * Get all threads in the simulation.
+     */
+    public Thread[] getAllThreads() {
+        return threads;
+    }
 
     public int threadCount() {
         return threads.length;
