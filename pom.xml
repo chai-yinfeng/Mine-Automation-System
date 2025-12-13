@@ -35,6 +35,37 @@
                     <useModulePath>false</useModulePath>
                 </configuration>
             </plugin>
+
+            <!-- JaCoCo code coverage -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <!-- 1) Attach JaCoCo agent to tests (Surefire) -->
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <!-- 默认就是 target/jacoco.exec；这里显式写出来便于你改名 -->
+                            <destFile>${project.build.directory}/jacoco.exec</destFile>
+                            <!-- 多次运行可选择 append；对单次 surefire 一般无影响 -->
+                            <append>true</append>
+                        </configuration>
+                    </execution>
+
+                    <!-- 2) Generate HTML report after tests -->
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 

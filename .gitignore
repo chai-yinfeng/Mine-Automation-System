@@ -10,3 +10,6 @@ target/
 
 # Fuzzer corpus
 .cifuzz-corpus/
+
+# Fuzzing output
+src/test/resources
