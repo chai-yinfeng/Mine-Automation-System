@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * and deadlock scenarios.
  */
 public class FuzzingTokenController implements TokenController {
-    
+
     private final Map<String, long[]> delaySequences = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> iterationCounters = new ConcurrentHashMap<>();
     private final Map<String, Semaphore> iterationGates = new ConcurrentHashMap<>();
@@ -23,10 +23,10 @@ public class FuzzingTokenController implements TokenController {
     private final int maxIterationsPerThread;
     private final boolean useGating;
     private final long gateTimeoutMs;
-    
+
     /**
      * Create a fuzzing controller with fine-grained loop control.
-     * 
+     *
      * @param data Fuzz input provider
      * @param tokenRegistry Registry to know which tokens exist
      * @param useGating If true, threads wait for explicit permission to proceed each iteration
@@ -36,47 +36,44 @@ public class FuzzingTokenController implements TokenController {
         this.defaultDelay = data.remainingBytes() > 4 ? data.consumeLong(0, 50) : 0;
         this.maxIterationsPerThread = data.remainingBytes() > 4 ? data.consumeInt(5, 20) : 10;
         this.gateTimeoutMs = 2000; // Shorter timeout for fuzzing
-        
+        System.out.println("fuzz data: " + data);
+        System.out.println("size: " + data.remainingBytes());
         // Generate delay sequences for each role
-        if (data.remainingBytes() > 8) {
-            int sequenceLength = data.consumeInt(3, 15);
-            for (ThreadToken.Role role : ThreadToken.Role.values()) {
-                if (data.remainingBytes() > 8) {
-                    long[] delays = new long[sequenceLength];
-                    for (int i = 0; i < sequenceLength && data.remainingBytes() > 4; i++) {
-                        delays[i] = data.consumeLong(0, 100);
-                    }
-                    delaySequences.put(role.name(), delays);
-                    iterationCounters.put(role.name(), new AtomicInteger(0));
-                    
-                    // Initialize gating semaphores (start with 0 permits - threads must wait)
-                    if (useGating) {
-                        iterationGates.put(role.name(), new Semaphore(0));
-                    }
-                }
+        int sequenceLength = data.remainingBytes() > 8 ? data.consumeInt(10, 50) : 10;
+        for (ThreadToken.Role role : ThreadToken.Role.values()) {
+            long[] delays = new long[sequenceLength];
+            for (int i = 0; i < sequenceLength && data.remainingBytes() > 4; i++) {
+                delays[i] = data.consumeLong(0, 100);
+            }
+            delaySequences.put(role.name(), delays);
+            iterationCounters.put(role.name(), new AtomicInteger(0));
+
+            // Initialize gating semaphores (start with 0 permits - threads must wait)
+            if (useGating) {
+                iterationGates.put(role.name(), new Semaphore(0));
             }
         }
     }
-    
+
     @Override
     public void onLoopIteration(ThreadToken token) {
         if (token == null) return;
-        
+
         String roleKey = token.getRole().name();
-        
+
         // Track iteration count and get current iteration number atomically
         AtomicInteger counter = iterationCounters.get(roleKey);
         int currentIteration = -1;
         if (counter != null) {
             currentIteration = counter.getAndIncrement();
-            
+
             // Stop thread after max iterations to prevent infinite running
             if (currentIteration >= maxIterationsPerThread) {
                 Thread.currentThread().interrupt();
                 return;
             }
         }
-        
+
         // If gating is enabled, wait for permission to proceed
         boolean acquiredPermission = true;
         if (useGating) {
@@ -91,7 +88,7 @@ public class FuzzingTokenController implements TokenController {
                 }
             }
         }
-        
+
         // Apply fuzz-driven delay using the captured iteration number
         // (even if timed out, we still apply delay for consistent behavior)
         long delay = getDelayForIteration(roleKey, currentIteration);
@@ -102,16 +99,16 @@ public class FuzzingTokenController implements TokenController {
                 Thread.currentThread().interrupt();
             }
         }
-        
+
         // If gating timed out, interrupt to signal potential deadlock
         if (useGating && !acquiredPermission) {
             Thread.currentThread().interrupt();
         }
     }
-    
+
     /**
      * Release a thread for one more loop iteration (when gating is enabled).
-     * 
+     *
      * @param role The role to release
      */
     public void releaseIteration(ThreadToken.Role role) {
@@ -122,7 +119,7 @@ public class FuzzingTokenController implements TokenController {
             }
         }
     }
-    
+
     /**
      * Release multiple iterations for a role.
      */
@@ -134,30 +131,30 @@ public class FuzzingTokenController implements TokenController {
             }
         }
     }
-    
+
     @Override
     public void beforeOperation(ThreadToken token, String operation) {
         // Hook available for future fine-grained control
     }
-    
+
     @Override
     public void afterOperation(ThreadToken token, String operation) {
         // Hook available for future fine-grained control
     }
-    
+
     private long getDelayForIteration(String roleKey, int iteration) {
         long[] delays = delaySequences.get(roleKey);
         if (delays == null || delays.length == 0 || iteration < 0) {
             return defaultDelay;
         }
-        
+
         if (iteration >= delays.length) {
             return delays[delays.length - 1]; // Use last delay
         }
-        
+
         return delays[iteration];
     }
-    
+
     /**
      * Get current iteration count for a role.
      */

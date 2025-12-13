@@ -8,7 +8,7 @@ public class MineFuzzTarget {
     /**
      * Fuzz entry point.
      */
-    private static final long MAX_RUN_MS = 15000;
+    private static final long MAX_RUN_MS = 150000;
 
 //    public static void fuzzerTestOneInput(FuzzedDataProvider data) {
 //
@@ -17,7 +17,7 @@ public class MineFuzzTarget {
 //        }
 //
 //        // 1. Decode fuzz input into timing sequences + run time bound
-////        long maxRunMs = data.consumeLong(1000, 5000); // total simulation time
+    ////        long maxRunMs = data.consumeLong(1000, 5000); // total simulation time
 //        SequencePauseProvider provider = new SequencePauseProvider(data);
 //
 //        // 2. Install fuzz-driven pause provider
@@ -50,7 +50,7 @@ public class MineFuzzTarget {
 
     public static void fuzzerTestOneInput(FuzzedDataProvider data) {
 
-        if (data.remainingBytes() < 8) {
+        if (data.remainingBytes() < 200) {
             return;
         }
 
@@ -62,19 +62,19 @@ public class MineFuzzTarget {
 
         // 2. Build the simulation (threads are constructed but not started)
         MineSimulation sim = new MineSimulation();
-        
+
         // 3. Initialize token-based fuzzing infrastructure
         ThreadTokenRegistry registry = new ThreadTokenRegistry();
         sim.registerThreadTokens(registry);
         TokenControllerProvider.setRegistry(registry);
-        
+
         // 4. Decide fuzzing mode: gated iteration control or free-running with delays
-        boolean useGating = data.remainingBytes() > 1 && data.consumeBoolean();
+        boolean useGating = true;
         FuzzingTokenController controller = new FuzzingTokenController(data, registry, useGating);
         TokenControllerProvider.setController(controller);
-        
+
         // 5. Start threads - all or subset based on fuzz input
-        boolean startAll = data.remainingBytes() > 1 ? data.consumeBoolean() : true;
+        boolean startAll = true;
         if (startAll) {
             sim.startAll();
         } else {
@@ -98,22 +98,22 @@ public class MineFuzzTarget {
             }
             sim.startAllRemaining();
         }
-        
+
         // 6. If using gated control, release iterations based on fuzz input
         if (useGating) {
             // Release a sequence of iterations to explore specific interleavings
             int releaseSteps = data.remainingBytes() > 4 ? data.consumeInt(5, 30) : 10;
             long releaseDelay = data.remainingBytes() > 4 ? data.consumeLong(5, 20) : 10;
-            
+
             for (int i = 0; i < releaseSteps && data.remainingBytes() > 1; i++) {
                 // Pick a role to release
                 int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
                 ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
-                
+
                 // Release 1-3 iterations for this role
                 int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
                 controller.releaseIterations(role, count);
-                
+
                 // Delay between releases to let threads execute (fuzz-controlled)
                 try {
                     Thread.sleep(releaseDelay);
