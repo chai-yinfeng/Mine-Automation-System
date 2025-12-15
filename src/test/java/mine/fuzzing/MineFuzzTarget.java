@@ -116,12 +116,14 @@ public class MineFuzzTarget {
 
                     // Check if this thread can actually make progress (not blocked on a wait condition)
                     boolean canProceed = sim.canThreadProceed(token);
+                    boolean tokenGranted = false;
                     
                     if (canProceed) {
                         // Release exactly 1 iteration for serialized execution
                         // Only one thread works at a time, completing its task before the next token is granted
                         controller.releaseIteration(token);
                         consecutiveBlocked = 0; // Reset counter on successful grant
+                        tokenGranted = true;
                     } else {
                         consecutiveBlocked++;
                         
@@ -131,6 +133,7 @@ public class MineFuzzTarget {
                             System.out.println("WARNING: " + MAX_CONSECUTIVE_BLOCKED + " consecutive tokens blocked. Force-granting token to: " + token.getUniqueId());
                             controller.releaseIteration(token);
                             consecutiveBlocked = 0;
+                            tokenGranted = true;
                         } else {
                             // Thread is blocked, don't grant token
                             // Consume some bytes to avoid infinite loop
@@ -141,6 +144,7 @@ public class MineFuzzTarget {
                         }
                     }
 
+                    // Only sleep if we actually granted a token
                     // Long delay to ensure the thread completes its work before next token grant
                     // This provides serialized execution - one thread works at a time
                     // Delay must be long enough for:
@@ -152,10 +156,12 @@ public class MineFuzzTarget {
                     // would use completion callbacks, but that would require modifying all thread classes.
                     // For fuzzing purposes, this 5-second delay is acceptable and provides reliable
                     // serialization. Adjust if thread operations take longer than expected.
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e) {
-                        break;
+                    if (tokenGranted) {
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                            break;
+                        }
                     }
                 }
                 
