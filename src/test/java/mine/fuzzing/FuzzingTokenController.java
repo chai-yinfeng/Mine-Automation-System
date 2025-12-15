@@ -108,13 +108,13 @@ public class FuzzingTokenController implements TokenController {
         }
 
         // If gating is enabled, wait for permission to proceed
-        boolean acquiredPermission = true;
         if (useGating) {
             Semaphore gate = iterationGates.get(uniqueKey);
             if (gate != null) {
                 try {
-                    // Wait for permission with timeout to prevent fuzzer hanging
-                    acquiredPermission = gate.tryAcquire(gateTimeoutMs, TimeUnit.MILLISECONDS);
+                    // Block indefinitely waiting for permission - TRUE serialization
+                    // Each thread MUST wait for its token before proceeding
+                    gate.acquire();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;
@@ -123,7 +123,6 @@ public class FuzzingTokenController implements TokenController {
         }
 
         // Apply fuzz-driven delay using the captured iteration number
-        // (even if timed out, we still apply delay for consistent behavior)
         long delay = getDelayForIteration(uniqueKey, currentIteration);
         if (delay > 0) {
             try {
@@ -132,16 +131,6 @@ public class FuzzingTokenController implements TokenController {
                 Thread.currentThread().interrupt();
                 return;
             }
-        }
-
-        // Note: We do NOT interrupt on timeout. The timeout is just to prevent
-        // the fuzzer from hanging forever. The thread continues its normal execution.
-        // Previous behavior (interrupting on timeout) caused threads to exit their main
-        // loop entirely, as the interrupt flag triggered loop termination conditions.
-        if (useGating && !acquiredPermission) {
-            // Log timeout for debugging but don't interrupt the thread
-            // Using System.err as this is fuzzing/test code and we want immediate output
-            System.err.println("Warning: Token gate timeout for " + uniqueKey + " at iteration " + currentIteration);
         }
     }
 
@@ -154,6 +143,7 @@ public class FuzzingTokenController implements TokenController {
         if (useGating) {
             Semaphore gate = iterationGates.get(token.getUniqueId());
             if (gate != null) {
+                System.out.println("Granting token to: " + token.getUniqueId());
                 gate.release();
             }
         }
