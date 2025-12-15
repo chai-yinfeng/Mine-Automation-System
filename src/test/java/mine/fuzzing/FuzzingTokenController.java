@@ -25,7 +25,6 @@ public class FuzzingTokenController implements TokenController {
     private final long defaultDelay;
     private final int maxIterationsPerThread;
     private final boolean useGating;
-    private final long gateTimeoutMs;
 
     /**
      * Create a fuzzing controller with fine-grained loop control.
@@ -40,7 +39,6 @@ public class FuzzingTokenController implements TokenController {
         // Set to Integer.MAX_VALUE to allow continuous operation without iteration limit
         // Previously limited to 5-20 iterations, causing threads to exit prematurely
         this.maxIterationsPerThread = Integer.MAX_VALUE;
-        this.gateTimeoutMs = 2000; // Shorter timeout for fuzzing
         System.out.println("fuzz data: " + data);
         System.out.println("size: " + data.remainingBytes());
         // Generate delay sequences for each registered thread instance
