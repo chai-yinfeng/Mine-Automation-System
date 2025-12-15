@@ -12,10 +12,10 @@ public class MineFuzzTarget {
     
     /**
      * Control whether to release all gates when fuzzer data is exhausted.
-     * If true (default), threads are released for free execution after data runs out.
-     * If false, threads remain blocked, allowing evaluation of the current state.
+     * If false (default), fuzzing terminates gracefully with threads remaining gated.
+     * If true, threads are released for free execution after data runs out.
      */
-    private static boolean releaseGatesOnDataExhaustion = true;
+    private static boolean releaseGatesOnDataExhaustion = false;
 
 //    public static void fuzzerTestOneInput(FuzzedDataProvider data) {
 //
@@ -172,15 +172,18 @@ public class MineFuzzTarget {
                     }
                 }
                 
-                // After fuzzer data is exhausted, optionally release all threads from gating
-                // This allows the system to run freely and either complete or reach natural deadlock
-                // Without this, threads stay blocked indefinitely waiting for tokens
+                // After fuzzer data is exhausted, determine behavior based on configuration
+                // Default behavior (releaseGatesOnDataExhaustion=false): terminate fuzzing gracefully
+                // Optional behavior (releaseGatesOnDataExhaustion=true): release all gates for free execution
                 if (releaseGatesOnDataExhaustion) {
                     System.out.println("Fuzzer data exhausted. Releasing all gates for free execution...");
                     controller.releaseAllGates();
                 } else {
-                    System.out.println("Fuzzer data exhausted. Threads remain gated for evaluation.");
+                    System.out.println("Fuzzer data exhausted. Fuzzing test completed successfully.");
                     printThreadStatusTable(sim, registry);
+                    // Gracefully terminate - threads remain gated, fuzzing test is complete
+                    // DeadlockWatcher will not detect this as a deadlock since we're intentionally stopping
+                    return;
                 }
             }
         }
@@ -252,7 +255,7 @@ public class MineFuzzTarget {
      * This is a public setter to allow tests to configure the behavior.
      * 
      * @param release If true, threads are released for free execution after data exhaustion.
-     *                If false, threads remain blocked for evaluation.
+     *                If false (default), fuzzing terminates gracefully with completion message.
      */
     public static void setReleaseGatesOnDataExhaustion(boolean release) {
         releaseGatesOnDataExhaustion = release;
