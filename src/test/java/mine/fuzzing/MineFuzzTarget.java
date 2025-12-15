@@ -114,9 +114,9 @@ public class MineFuzzTarget {
 
                     // Check if this thread can actually make progress (not blocked on a wait condition)
                     if (sim.canThreadProceed(token)) {
-                        // Release 1-3 iterations for this specific instance
-                        int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
-                        controller.releaseIterations(token, count);
+                        // Release exactly 1 iteration for serialized execution
+                        // Only one thread works at a time, completing its task before the next token is granted
+                        controller.releaseIteration(token);
                     } else {
                         // Thread is blocked, don't grant token
                         // Consume some bytes to avoid infinite loop
@@ -126,9 +126,14 @@ public class MineFuzzTarget {
                         }
                     }
 
-                    // Delay between releases to let threads execute (fuzz-controlled)
+                    // Long delay to ensure the thread completes its work before next token grant
+                    // This provides serialized execution - one thread works at a time
+                    // Delay must be long enough for:
+                    // - Thread to acquire the permit
+                    // - Execute its business logic (collect/deliver/etc with blocking waits)
+                    // - Complete and loop back to waiting state
                     try {
-                        Thread.sleep(500);
+                        Thread.sleep(5000);
                     } catch (InterruptedException e) {
                         break;
                     }
