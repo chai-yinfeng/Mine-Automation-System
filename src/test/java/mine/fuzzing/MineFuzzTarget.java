@@ -143,6 +143,12 @@ public class MineFuzzTarget {
                         break;
                     }
                 }
+                
+                // After fuzzer data is exhausted, release all threads from gating
+                // This allows the system to run freely and either complete or reach natural deadlock
+                // Without this, threads stay blocked indefinitely waiting for tokens
+                System.out.println("Fuzzer data exhausted. Releasing all gates for free execution...");
+                controller.releaseAllGates();
             }
         }
 

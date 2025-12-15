@@ -203,6 +203,21 @@ public class FuzzingTokenController implements TokenController {
         }
     }
 
+    /**
+     * Release all gates, allowing all threads to proceed freely without gating.
+     * This is useful when fuzzer data is exhausted but we want threads to continue
+     * executing to completion or natural deadlock.
+     */
+    public void releaseAllGates() {
+        if (useGating) {
+            System.out.println("Releasing all gates - threads will now run freely");
+            for (Semaphore gate : iterationGates.values()) {
+                // Release many permits so threads can proceed indefinitely
+                gate.release(Integer.MAX_VALUE / 2);
+            }
+        }
+    }
+
     @Override
     public void beforeOperation(ThreadToken token, String operation) {
         // Hook available for future fine-grained control
