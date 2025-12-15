@@ -37,7 +37,9 @@ public class FuzzingTokenController implements TokenController {
     public FuzzingTokenController(FuzzedDataProvider data, ThreadTokenRegistry tokenRegistry, boolean useGating) {
         this.useGating = useGating;
         this.defaultDelay = data.remainingBytes() > 4 ? data.consumeLong(0, 50) : 0;
-        this.maxIterationsPerThread = data.remainingBytes() > 4 ? data.consumeInt(5, 20) : 10;
+        // Set to Integer.MAX_VALUE to allow continuous operation without iteration limit
+        // Previously limited to 5-20 iterations, causing threads to exit prematurely
+        this.maxIterationsPerThread = Integer.MAX_VALUE;
         this.gateTimeoutMs = 2000; // Shorter timeout for fuzzing
         System.out.println("fuzz data: " + data);
         System.out.println("size: " + data.remainingBytes());
