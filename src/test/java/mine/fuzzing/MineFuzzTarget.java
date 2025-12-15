@@ -106,6 +106,8 @@ public class MineFuzzTarget {
             
             // Only proceed if there are registered tokens
             if (!allTokens.isEmpty()) {
+                int consecutiveBlocked = 0;
+                final int MAX_CONSECUTIVE_BLOCKED = 100; // Try 100 tokens before forcing one
 
                 while (data.remainingBytes() > 1) {
                     // Pick a unique token to release (instance-specific control)
@@ -113,16 +115,29 @@ public class MineFuzzTarget {
                     ThreadToken token = allTokens.get(tokenIdx);
 
                     // Check if this thread can actually make progress (not blocked on a wait condition)
-                    if (sim.canThreadProceed(token)) {
+                    boolean canProceed = sim.canThreadProceed(token);
+                    
+                    if (canProceed) {
                         // Release exactly 1 iteration for serialized execution
                         // Only one thread works at a time, completing its task before the next token is granted
                         controller.releaseIteration(token);
+                        consecutiveBlocked = 0; // Reset counter on successful grant
                     } else {
-                        // Thread is blocked, don't grant token
-                        // Consume some bytes to avoid infinite loop
-                        final int DUMMY_CONSUME_LIMIT = 100;
-                        if (data.remainingBytes() > 1) {
-                            data.consumeInt(0, DUMMY_CONSUME_LIMIT);
+                        consecutiveBlocked++;
+                        
+                        // If too many consecutive tokens are blocked, force grant one to prevent livelock
+                        // This handles cases where conditional logic is too conservative
+                        if (consecutiveBlocked >= MAX_CONSECUTIVE_BLOCKED) {
+                            System.out.println("WARNING: " + MAX_CONSECUTIVE_BLOCKED + " consecutive tokens blocked. Force-granting token to: " + token.getUniqueId());
+                            controller.releaseIteration(token);
+                            consecutiveBlocked = 0;
+                        } else {
+                            // Thread is blocked, don't grant token
+                            // Consume some bytes to avoid infinite loop
+                            final int DUMMY_CONSUME_LIMIT = 100;
+                            if (data.remainingBytes() > 1) {
+                                data.consumeInt(0, DUMMY_CONSUME_LIMIT);
+                            }
                         }
                     }
 
