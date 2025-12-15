@@ -9,6 +9,13 @@ public class MineFuzzTarget {
      * Fuzz entry point.
      */
     private static final long MAX_RUN_MS = 150000;
+    
+    /**
+     * Control whether to release all gates when fuzzer data is exhausted.
+     * If true (default), threads are released for free execution after data runs out.
+     * If false, threads remain blocked, allowing evaluation of the current state.
+     */
+    private static boolean releaseGatesOnDataExhaustion = true;
 
 //    public static void fuzzerTestOneInput(FuzzedDataProvider data) {
 //
@@ -165,11 +172,16 @@ public class MineFuzzTarget {
                     }
                 }
                 
-                // After fuzzer data is exhausted, release all threads from gating
+                // After fuzzer data is exhausted, optionally release all threads from gating
                 // This allows the system to run freely and either complete or reach natural deadlock
                 // Without this, threads stay blocked indefinitely waiting for tokens
-                System.out.println("Fuzzer data exhausted. Releasing all gates for free execution...");
-                controller.releaseAllGates();
+                if (releaseGatesOnDataExhaustion) {
+                    System.out.println("Fuzzer data exhausted. Releasing all gates for free execution...");
+                    controller.releaseAllGates();
+                } else {
+                    System.out.println("Fuzzer data exhausted. Threads remain gated for evaluation.");
+                    printThreadStatusTable(sim, registry);
+                }
             }
         }
 
@@ -195,5 +207,54 @@ public class MineFuzzTarget {
             Params.resetPauseProvider();
             TokenControllerProvider.reset();
         }
+    }
+    
+    /**
+     * Print a thread status table showing which threads can proceed.
+     * This method does not produce any output from the system itself, only displays
+     * the current state of all threads based on their canProceed() checks.
+     * 
+     * @param sim The simulation containing all threads
+     * @param registry The token registry mapping threads to tokens
+     */
+    private static void printThreadStatusTable(MineSimulation sim, ThreadTokenRegistry registry) {
+        System.out.println("\n╔════════════════════════════════════════════════════╗");
+        System.out.println("║         Thread Status Table (Current Tick)        ║");
+        System.out.println("╠════════════════════════════════╦═══════════════════╣");
+        System.out.println("║ Thread                         ║ Can Proceed?      ║");
+        System.out.println("╠════════════════════════════════╬═══════════════════╣");
+        
+        // Get all registered tokens and sort them for consistent output
+        java.util.List<ThreadToken> allTokens = new java.util.ArrayList<>(registry.getAllTokens());
+        allTokens.sort((t1, t2) -> {
+            int roleCompare = t1.getRole().compareTo(t2.getRole());
+            if (roleCompare != 0) return roleCompare;
+            return Integer.compare(t1.getInstanceId(), t2.getInstanceId());
+        });
+        
+        // Print status for each thread
+        for (ThreadToken token : allTokens) {
+            Thread thread = registry.getThread(token);
+            if (thread != null && thread.isAlive()) {
+                boolean canProceed = sim.canThreadProceed(token);
+                String status = canProceed ? "✅ Yes" : "❌ No";
+                String threadName = String.format("%-30s", token.getUniqueId());
+                System.out.printf("║ %s ║ %-17s ║%n", threadName, status);
+            }
+        }
+        
+        System.out.println("╚════════════════════════════════╩═══════════════════╝");
+        System.out.println();
+    }
+    
+    /**
+     * Set whether to release all gates when fuzzer data is exhausted.
+     * This is a public setter to allow tests to configure the behavior.
+     * 
+     * @param release If true, threads are released for free execution after data exhaustion.
+     *                If false, threads remain blocked for evaluation.
+     */
+    public static void setReleaseGatesOnDataExhaustion(boolean release) {
+        releaseGatesOnDataExhaustion = release;
     }
 }
