@@ -47,4 +47,17 @@ public class Consumer extends Thread {
 			}
 		}
 	}
+
+	// --- [FUZZING] Methods to check if this consumer can make progress ---
+
+	/**
+	 * Returns true if the consumer can proceed (can depart a cart from elevator).
+	 */
+	public boolean canProceed() {
+		return elevator.canDepart();
+	}
+
+	public Elevator getElevator() {
+		return elevator;
+	}
 }

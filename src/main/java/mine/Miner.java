@@ -41,5 +41,17 @@ public class Miner extends Thread {
         }
     }
 
+    // --- [FUZZING] Methods to check if this miner can make progress ---
+
+    /**
+     * Returns true if the miner can proceed (can deposit gem at station).
+     */
+    public boolean canProceed() {
+        return station.canDepositGem();
+    }
+
+    public Station getStation() {
+        return station;
+    }
 }
 

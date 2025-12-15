@@ -47,4 +47,17 @@ public class Producer extends Thread {
 			}
 		}
 	}
+
+	// --- [FUZZING] Methods to check if this producer can make progress ---
+
+	/**
+	 * Returns true if the producer can proceed (can arrive with a cart to elevator).
+	 */
+	public boolean canProceed() {
+		return elevator.canArrive();
+	}
+
+	public Elevator getElevator() {
+		return elevator;
+	}
 }

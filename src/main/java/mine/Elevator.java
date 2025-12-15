@@ -145,4 +145,46 @@ public class Elevator extends Location {
 	public String getPosition() {
 		return current;
 	}
+
+	// --- [FUZZING] Predicate methods to check if operations can proceed ---
+
+	/**
+	 * Returns true if arrive() can proceed without blocking.
+	 * Condition: elevator must be at top and empty
+	 */
+	public synchronized boolean canArrive() {
+		return this.cart == null && atTop;
+	}
+
+	/**
+	 * Returns true if depart() can proceed without blocking.
+	 * Condition: elevator must be at top and have a cart
+	 */
+	public synchronized boolean canDepart() {
+		return this.cart != null && atTop;
+	}
+
+	/**
+	 * Returns true if collect() (from bottom) can proceed without blocking.
+	 * Condition: elevator must be at bottom and have a cart
+	 */
+	public synchronized boolean canCollectFromBottom() {
+		return this.cart != null && !atTop;
+	}
+
+	/**
+	 * Returns true if deliver() (to bottom) can proceed without blocking.
+	 * Condition: elevator must be at bottom and empty
+	 */
+	public synchronized boolean canDeliverToBottom() {
+		return this.cart == null && !atTop;
+	}
+
+	/**
+	 * Returns true if operateEmpty() can proceed without blocking.
+	 * Condition: elevator must be empty
+	 */
+	public synchronized boolean canOperateEmpty() {
+		return this.cart == null;
+	}
 }

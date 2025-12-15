@@ -112,9 +112,18 @@ public class MineFuzzTarget {
                     int tokenIdx = data.consumeInt(0, allTokens.size() - 1);
                     ThreadToken token = allTokens.get(tokenIdx);
 
-                    // Release 1-3 iterations for this specific instance
-                    int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
-                    controller.releaseIterations(token, count);
+                    // Check if this thread can actually make progress (not blocked on a wait condition)
+                    if (sim.canThreadProceed(token)) {
+                        // Release 1-3 iterations for this specific instance
+                        int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
+                        controller.releaseIterations(token, count);
+                    } else {
+                        // Thread is blocked, don't grant token
+                        // Consume some bytes to avoid infinite loop
+                        if (data.remainingBytes() > 1) {
+                            data.consumeInt(0, 100); // just consume some bytes
+                        }
+                    }
 
                     // Delay between releases to let threads execute (fuzz-controlled)
                     try {

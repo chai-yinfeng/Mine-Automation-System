@@ -43,4 +43,16 @@ public class Operator extends Thread {
 		}
 	}
 
+	// --- [FUZZING] Methods to check if this operator can make progress ---
+
+	/**
+	 * Returns true if the operator can proceed (can operate empty elevator).
+	 */
+	public boolean canProceed() {
+		return elevator.canOperateEmpty();
+	}
+
+	public Elevator getElevator() {
+		return elevator;
+	}
 }
