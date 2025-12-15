@@ -16,9 +16,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class FuzzingTokenController implements TokenController {
 
+    private static final int MAX_INSTANCE_ID = 20;
+    
     private final Map<String, long[]> delaySequences = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> iterationCounters = new ConcurrentHashMap<>();
     private final Map<String, Semaphore> iterationGates = new ConcurrentHashMap<>();
+    private final Map<ThreadToken.Role, java.util.List<String>> roleToKeys = new ConcurrentHashMap<>();
     private final long defaultDelay;
     private final int maxIterationsPerThread;
     private final boolean useGating;
@@ -50,9 +53,12 @@ public class FuzzingTokenController implements TokenController {
                 delays[i] = data.consumeLong(0, 100);
             }
             
+            // Track keys for this role for efficient role-based operations
+            java.util.List<String> keysForRole = new java.util.ArrayList<>();
+            
             // For each role, we need to find all registered instances and initialize them
             // We'll iterate through all possible instance IDs (a reasonable upper bound)
-            for (int instanceId = 0; instanceId < 20; instanceId++) {
+            for (int instanceId = 0; instanceId < MAX_INSTANCE_ID; instanceId++) {
                 ThreadToken token = new ThreadToken(role, instanceId);
                 Thread thread = tokenRegistry.getThread(token);
                 
@@ -61,12 +67,18 @@ public class FuzzingTokenController implements TokenController {
                     String uniqueKey = token.getUniqueId();
                     delaySequences.put(uniqueKey, delays.clone());
                     iterationCounters.put(uniqueKey, new AtomicInteger(0));
+                    keysForRole.add(uniqueKey);
                     
                     // Initialize gating semaphores (start with 0 permits - threads must wait)
                     if (useGating) {
                         iterationGates.put(uniqueKey, new Semaphore(0));
                     }
                 }
+            }
+            
+            // Store the mapping for efficient role-based operations
+            if (!keysForRole.isEmpty()) {
+                roleToKeys.put(role, keysForRole);
             }
         }
     }
@@ -160,8 +172,9 @@ public class FuzzingTokenController implements TokenController {
      */
     public void releaseIteration(ThreadToken.Role role) {
         if (useGating) {
-            for (String key : iterationGates.keySet()) {
-                if (key.startsWith(role.name() + "_")) {
+            java.util.List<String> keys = roleToKeys.get(role);
+            if (keys != null) {
+                for (String key : keys) {
                     Semaphore gate = iterationGates.get(key);
                     if (gate != null) {
                         gate.release();
@@ -180,8 +193,9 @@ public class FuzzingTokenController implements TokenController {
      */
     public void releaseIterations(ThreadToken.Role role, int count) {
         if (useGating) {
-            for (String key : iterationGates.keySet()) {
-                if (key.startsWith(role.name() + "_")) {
+            java.util.List<String> keys = roleToKeys.get(role);
+            if (keys != null) {
+                for (String key : keys) {
                     Semaphore gate = iterationGates.get(key);
                     if (gate != null) {
                         gate.release(count);
@@ -234,9 +248,13 @@ public class FuzzingTokenController implements TokenController {
      */
     public int getIterationCount(ThreadToken.Role role) {
         int total = 0;
-        for (Map.Entry<String, AtomicInteger> entry : iterationCounters.entrySet()) {
-            if (entry.getKey().startsWith(role.name() + "_")) {
-                total += entry.getValue().get();
+        java.util.List<String> keys = roleToKeys.get(role);
+        if (keys != null) {
+            for (String key : keys) {
+                AtomicInteger counter = iterationCounters.get(key);
+                if (counter != null) {
+                    total += counter.get();
+                }
             }
         }
         return total;
