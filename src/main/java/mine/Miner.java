@@ -22,6 +22,12 @@ public class Miner extends Thread {
                 mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
                     mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
                 
+                // [LOGGING] loop iteration start
+                mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+                if (token != null) {
+                    MineLogger.log("MINER", "iteration start [" + token.getUniqueId() + "]");
+                }
+                
                 sleep(Params.MINING_TIME);
 
                 // deposit mined gem at station

@@ -24,6 +24,12 @@ public class Operator extends Thread {
 				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
 					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
 				
+				// [LOGGING] loop iteration start
+				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+				if (token != null) {
+					MineLogger.log("OPERATOR", "iteration start [" + token.getUniqueId() + "]");
+				}
+				
 				sleep(Params.ELEVATOR_TIME);
 				
 				// update the status of the elevator

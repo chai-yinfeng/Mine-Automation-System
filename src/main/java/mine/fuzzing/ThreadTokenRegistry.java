@@ -68,4 +68,13 @@ public class ThreadTokenRegistry {
     public int size() {
         return threadToToken.size();
     }
+    
+    /**
+     * Get all registered tokens.
+     * 
+     * @return A collection of all registered tokens
+     */
+    public java.util.Collection<ThreadToken> getAllTokens() {
+        return tokenToThread.keySet();
+    }
 }

@@ -29,6 +29,12 @@ public class Consumer extends Thread {
 				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
 					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
 				
+				// [LOGGING] loop iteration start
+				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+				if (token != null) {
+					MineLogger.log("CONSUMER", "iteration start [" + token.getUniqueId() + "]");
+				}
+				
 				// remove a cart from the elevator
 				Cart c = this.elevator.depart();
 				// [LOGGING] cart departs from mine

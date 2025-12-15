@@ -28,6 +28,12 @@ public class Engine extends Thread {
 				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
 					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
 				
+				// [LOGGING] loop iteration start
+				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+				if (token != null) {
+					MineLogger.log("ENGINE", "iteration start [" + token.getUniqueId() + "]");
+				}
+				
 				// collect a cart from the origin
 				Cart cart = this.origin.collect();
 				

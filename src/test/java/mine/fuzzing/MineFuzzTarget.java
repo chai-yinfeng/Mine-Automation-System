@@ -101,18 +101,21 @@ public class MineFuzzTarget {
 
         // 6. If using gated control, release iterations based on fuzz input
         if (useGating) {
+            // Get all registered tokens for precise control
+            java.util.List<ThreadToken> allTokens = new java.util.ArrayList<>(registry.getAllTokens());
+            
             // Release a sequence of iterations to explore specific interleavings
             int releaseSteps = data.remainingBytes() > 4 ? data.consumeInt(5, 30) : 10;
             long releaseDelay = data.remainingBytes() > 4 ? data.consumeLong(5, 20) : 10;
 
             for (int i = 0; i < releaseSteps && data.remainingBytes() > 1; i++) {
-                // Pick a role to release
-                int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
-                ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
+                // Pick a unique token to release (instance-specific control)
+                int tokenIdx = data.consumeInt(0, allTokens.size() - 1);
+                ThreadToken token = allTokens.get(tokenIdx);
 
-                // Release 1-3 iterations for this role
+                // Release 1-3 iterations for this specific instance
                 int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
-                controller.releaseIterations(role, count);
+                controller.releaseIterations(token, count);
 
                 // Delay between releases to let threads execute (fuzz-controlled)
                 try {

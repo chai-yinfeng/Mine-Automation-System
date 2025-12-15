@@ -28,6 +28,12 @@ public class Producer extends Thread {
 				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
 					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
 				
+				// [LOGGING] loop iteration start
+				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+				if (token != null) {
+					MineLogger.log("PRODUCER", "iteration start [" + token.getUniqueId() + "]");
+				}
+				
 				// create a new cart and send to elevator
 				Cart cart = Cart.getNewCart();
 				// [LOGGING] new cart arrives at the mine
