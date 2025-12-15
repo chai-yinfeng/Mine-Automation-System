@@ -63,7 +63,7 @@ public class Elevator extends Location {
 	public synchronized void arrive(Cart cart) throws InterruptedException {
 			
 //		while (this.cart != null || "bottom".equals(this.current)) {
-		while (this.cart == null || !atTop) {
+		while (this.cart != null || !atTop) {
 			wait();
 		}
 		
@@ -114,7 +114,7 @@ public class Elevator extends Location {
 	public synchronized void deliver(Cart cart) throws InterruptedException {
 		
 //		while (this.cart != null || "top".equals(this.current)) {
-		while (this.cart == null || atTop) {
+		while (this.cart != null || atTop) {
 			wait();
 		}
 			
