@@ -132,6 +132,11 @@ public class MineFuzzTarget {
                     // - Thread to acquire the permit
                     // - Execute its business logic (collect/deliver/etc with blocking waits)
                     // - Complete and loop back to waiting state
+                    // 
+                    // Note: This is a pragmatic timeout-based approach. A more sophisticated solution
+                    // would use completion callbacks, but that would require modifying all thread classes.
+                    // For fuzzing purposes, this 5-second delay is acceptable and provides reliable
+                    // serialization. Adjust if thread operations take longer than expected.
                     try {
                         Thread.sleep(5000);
                     } catch (InterruptedException e) {
