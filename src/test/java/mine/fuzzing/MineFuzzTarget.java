@@ -104,24 +104,27 @@ public class MineFuzzTarget {
             // Get all registered tokens for precise control
             java.util.List<ThreadToken> allTokens = new java.util.ArrayList<>(registry.getAllTokens());
             
-            // Release a sequence of iterations to explore specific interleavings
-            int releaseSteps = data.remainingBytes() > 4 ? data.consumeInt(5, 30) : 10;
-            long releaseDelay = data.remainingBytes() > 4 ? data.consumeLong(5, 20) : 10;
+            // Only proceed if there are registered tokens
+            if (!allTokens.isEmpty()) {
+                // Release a sequence of iterations to explore specific interleavings
+                int releaseSteps = data.remainingBytes() > 4 ? data.consumeInt(5, 30) : 10;
+                long releaseDelay = data.remainingBytes() > 4 ? data.consumeLong(5, 20) : 10;
 
-            for (int i = 0; i < releaseSteps && data.remainingBytes() > 1; i++) {
-                // Pick a unique token to release (instance-specific control)
-                int tokenIdx = data.consumeInt(0, allTokens.size() - 1);
-                ThreadToken token = allTokens.get(tokenIdx);
+                for (int i = 0; i < releaseSteps && data.remainingBytes() > 1; i++) {
+                    // Pick a unique token to release (instance-specific control)
+                    int tokenIdx = data.consumeInt(0, allTokens.size() - 1);
+                    ThreadToken token = allTokens.get(tokenIdx);
 
-                // Release 1-3 iterations for this specific instance
-                int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
-                controller.releaseIterations(token, count);
+                    // Release 1-3 iterations for this specific instance
+                    int count = data.remainingBytes() > 1 ? data.consumeInt(1, 3) : 1;
+                    controller.releaseIterations(token, count);
 
-                // Delay between releases to let threads execute (fuzz-controlled)
-                try {
-                    Thread.sleep(releaseDelay);
-                } catch (InterruptedException e) {
-                    break;
+                    // Delay between releases to let threads execute (fuzz-controlled)
+                    try {
+                        Thread.sleep(releaseDelay);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
                 }
             }
         }

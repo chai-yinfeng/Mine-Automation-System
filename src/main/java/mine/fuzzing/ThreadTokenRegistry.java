@@ -71,10 +71,11 @@ public class ThreadTokenRegistry {
     
     /**
      * Get all registered tokens.
+     * Returns a defensive copy to prevent external modification.
      * 
      * @return A collection of all registered tokens
      */
     public java.util.Collection<ThreadToken> getAllTokens() {
-        return tokenToThread.keySet();
+        return new java.util.ArrayList<>(tokenToThread.keySet());
     }
 }
