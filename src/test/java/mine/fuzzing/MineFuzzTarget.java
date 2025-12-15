@@ -106,11 +106,8 @@ public class MineFuzzTarget {
             
             // Only proceed if there are registered tokens
             if (!allTokens.isEmpty()) {
-                // Release a sequence of iterations to explore specific interleavings
-                int releaseSteps = data.remainingBytes() > 4 ? data.consumeInt(5, 30) : 10;
-                long releaseDelay = data.remainingBytes() > 4 ? data.consumeLong(5, 20) : 10;
 
-                for (int i = 0; i < releaseSteps && data.remainingBytes() > 1; i++) {
+                while (data.remainingBytes() > 1) {
                     // Pick a unique token to release (instance-specific control)
                     int tokenIdx = data.consumeInt(0, allTokens.size() - 1);
                     ThreadToken token = allTokens.get(tokenIdx);
@@ -121,7 +118,7 @@ public class MineFuzzTarget {
 
                     // Delay between releases to let threads execute (fuzz-controlled)
                     try {
-                        Thread.sleep(releaseDelay);
+                        Thread.sleep(500);
                     } catch (InterruptedException e) {
                         break;
                     }
