@@ -132,10 +132,11 @@ public class FuzzingTokenController implements TokenController {
 
         // Note: We do NOT interrupt on timeout. The timeout is just to prevent
         // the fuzzer from hanging forever. The thread continues its normal execution.
-        // If gating timed out, the thread proceeds without explicit token grant.
+        // Previous behavior (interrupting on timeout) caused threads to exit their main
+        // loop entirely, as the interrupt flag triggered loop termination conditions.
         if (useGating && !acquiredPermission) {
             // Log timeout for debugging but don't interrupt the thread
-            // Interrupting would cause the thread to exit its main loop entirely
+            // Using System.err as this is fuzzing/test code and we want immediate output
             System.err.println("Warning: Token gate timeout for " + uniqueKey + " at iteration " + currentIteration);
         }
     }
