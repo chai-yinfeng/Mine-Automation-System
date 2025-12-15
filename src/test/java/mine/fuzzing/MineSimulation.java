@@ -235,6 +235,15 @@ public class MineSimulation {
                     return lastEngine.canProceed();
                 }
                 break;
+            
+            case CART:
+                // CART is not a thread type in this simulation
+                // This role exists in the enum but is never used
+                return false;
+            
+            default:
+                // Unknown role
+                return false;
         }
 
         return false;

@@ -120,8 +120,9 @@ public class MineFuzzTarget {
                     } else {
                         // Thread is blocked, don't grant token
                         // Consume some bytes to avoid infinite loop
+                        final int DUMMY_CONSUME_LIMIT = 100;
                         if (data.remainingBytes() > 1) {
-                            data.consumeInt(0, 100); // just consume some bytes
+                            data.consumeInt(0, DUMMY_CONSUME_LIMIT);
                         }
                     }
 
