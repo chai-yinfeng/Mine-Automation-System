@@ -25,11 +25,10 @@ public class Engine extends Thread {
 		while (!this.isInterrupted()) {
 			try {
 				// [FUZZING-HOOK] Allow token-based control of loop iteration
-				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
-					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(token);
 				
 				// [LOGGING] loop iteration start
-				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
 				if (token != null) {
 					MineLogger.log("ENGINE", "iteration start [" + token.getUniqueId() + "]");
 				}
