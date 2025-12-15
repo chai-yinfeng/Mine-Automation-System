@@ -98,7 +98,9 @@ public class FuzzingTokenController implements TokenController {
         if (counter != null) {
             currentIteration = counter.getAndIncrement();
 
-            // Stop thread after max iterations to prevent infinite running
+            // Check against max iterations (set to Integer.MAX_VALUE for continuous operation)
+            // Note: With Integer.MAX_VALUE, this check will effectively never trigger, allowing
+            // threads to run indefinitely. Simulation termination is handled externally via stopAll().
             if (currentIteration >= maxIterationsPerThread) {
                 Thread.currentThread().interrupt();
                 return;
