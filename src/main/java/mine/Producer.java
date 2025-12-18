@@ -43,6 +43,7 @@ public class Producer extends Thread {
 				sleep(Params.arrivalPause());
 			}
 			catch (InterruptedException e) {
+                System.out.println(e);
 				this.interrupt();
 			}
 		}

@@ -43,6 +43,7 @@ public class Engine extends Thread {
 				this.destination.deliver(cart);
 			}
 			catch (InterruptedException e) {
+                System.out.println(e);
 				this.interrupt();
 			}
 		}

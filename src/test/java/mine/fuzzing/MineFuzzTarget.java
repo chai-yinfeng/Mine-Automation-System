@@ -124,16 +124,18 @@ public class MineFuzzTarget {
                     // Check if this thread can actually make progress (not blocked on a wait condition)
                     boolean canProceed = sim.canThreadProceed(token);
                     boolean tokenGranted = false;
-                    
+
+
                     if (canProceed) {
                         // Release exactly 1 iteration for serialized execution
                         // Only one thread works at a time, completing its task before the next token is granted
                         controller.releaseIteration(token);
+                        System.out.println("Token granted to: " + token);
                         consecutiveBlocked = 0; // Reset counter on successful grant
                         tokenGranted = true;
                     } else {
                         consecutiveBlocked++;
-                        
+
                         // If too many consecutive tokens are blocked, force grant one to prevent livelock
                         // This handles cases where conditional logic is too conservative
                         if (consecutiveBlocked >= MAX_CONSECUTIVE_BLOCKED) {
@@ -151,6 +153,9 @@ public class MineFuzzTarget {
                         }
                     }
 
+                    System.out.println("Remaining bytes: " + data.remainingBytes());
+                    printThreadStatusTable(sim, registry);
+
                     // Only sleep if we actually granted a token
                     // Long delay to ensure the thread completes its work before next token grant
                     // This provides serialized execution - one thread works at a time
@@ -165,7 +170,7 @@ public class MineFuzzTarget {
                     // serialization. Adjust if thread operations take longer than expected.
                     if (tokenGranted) {
                         try {
-                            Thread.sleep(5000);
+                            Thread.sleep(500);
                         } catch (InterruptedException e) {
                             break;
                         }
