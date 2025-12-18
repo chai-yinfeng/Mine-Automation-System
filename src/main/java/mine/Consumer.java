@@ -26,8 +26,13 @@ public class Consumer extends Thread {
 		while(!this.isInterrupted()) {
 			try {
 				// [FUZZING-HOOK] Allow token-based control of loop iteration
-				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
-					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(token);
+				
+				// [LOGGING] loop iteration start
+				if (token != null) {
+					MineLogger.log("CONSUMER", "iteration start [" + token.getUniqueId() + "]");
+				}
 				
 				// remove a cart from the elevator
 				Cart c = this.elevator.depart();
@@ -41,5 +46,18 @@ public class Consumer extends Thread {
 				this.interrupt();
 			}
 		}
+	}
+
+	// --- [FUZZING] Methods to check if this consumer can make progress ---
+
+	/**
+	 * Returns true if the consumer can proceed (can depart a cart from elevator).
+	 */
+	public boolean canProceed() {
+		return elevator.canDepart();
+	}
+
+	public Elevator getElevator() {
+		return elevator;
 	}
 }

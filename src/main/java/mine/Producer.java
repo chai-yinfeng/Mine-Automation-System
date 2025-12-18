@@ -25,8 +25,13 @@ public class Producer extends Thread {
 		while(!this.isInterrupted()) {
 			try {
 				// [FUZZING-HOOK] Allow token-based control of loop iteration
-				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
-					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(token);
+				
+				// [LOGGING] loop iteration start
+				if (token != null) {
+					MineLogger.log("PRODUCER", "iteration start [" + token.getUniqueId() + "]");
+				}
 				
 				// create a new cart and send to elevator
 				Cart cart = Cart.getNewCart();
@@ -38,8 +43,22 @@ public class Producer extends Thread {
 				sleep(Params.arrivalPause());
 			}
 			catch (InterruptedException e) {
+                System.out.println(e);
 				this.interrupt();
 			}
 		}
+	}
+
+	// --- [FUZZING] Methods to check if this producer can make progress ---
+
+	/**
+	 * Returns true if the producer can proceed (can arrive with a cart to elevator).
+	 */
+	public boolean canProceed() {
+		return elevator.canArrive();
+	}
+
+	public Elevator getElevator() {
+		return elevator;
 	}
 }

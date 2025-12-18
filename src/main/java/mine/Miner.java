@@ -19,8 +19,13 @@ public class Miner extends Thread {
         while (!this.isInterrupted()) {
             try {
                 // [FUZZING-HOOK] Allow token-based control of loop iteration
-                mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
-                    mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+                mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+                mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(token);
+                
+                // [LOGGING] loop iteration start
+                if (token != null) {
+                    MineLogger.log("MINER", "iteration start [" + token.getUniqueId() + "]");
+                }
                 
                 sleep(Params.MINING_TIME);
 
@@ -36,5 +41,17 @@ public class Miner extends Thread {
         }
     }
 
+    // --- [FUZZING] Methods to check if this miner can make progress ---
+
+    /**
+     * Returns true if the miner can proceed (can deposit gem at station).
+     */
+    public boolean canProceed() {
+        return station.canDepositGem();
+    }
+
+    public Station getStation() {
+        return station;
+    }
 }
 

@@ -191,4 +191,61 @@ public class MineSimulation {
     private void joinQuiet(Thread t) throws InterruptedException {
         t.join(2000);
     }
+
+    /**
+     * Check if a thread with the given token can make progress.
+     * This checks if the thread's next operation would block on a wait condition.
+     * 
+     * @param token The token identifying the thread to check
+     * @return true if the thread can proceed without blocking, false otherwise
+     */
+    public boolean canThreadProceed(ThreadToken token) {
+        if (token == null) return false;
+
+        ThreadToken.Role role = token.getRole();
+        int instanceId = token.getInstanceId();
+
+        switch (role) {
+            case PRODUCER:
+                return producer.canProceed();
+            
+            case CONSUMER:
+                return consumer.canProceed();
+            
+            case OPERATOR:
+                return operator.canProceed();
+            
+            case MINER:
+                if (instanceId >= 0 && instanceId < miners.length) {
+                    return miners[instanceId].canProceed();
+                }
+                break;
+            
+            case ENGINE:
+                // Check inter-station engines
+                if (instanceId >= 0 && instanceId < engines.length) {
+                    return engines[instanceId].canProceed();
+                }
+                // Check first engine (elevator to station[0])
+                else if (instanceId == engines.length) {
+                    return firstEngine.canProceed();
+                }
+                // Check last engine (station[n-1] to elevator)
+                else if (instanceId == engines.length + 1) {
+                    return lastEngine.canProceed();
+                }
+                break;
+            
+            case CART:
+                // CART is not a thread type in this simulation
+                // This role exists in the enum but is never used
+                return false;
+            
+            default:
+                // Unknown role
+                return false;
+        }
+
+        return false;
+    }
 }

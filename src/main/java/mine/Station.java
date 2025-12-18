@@ -97,4 +97,30 @@ public class Station extends Location {
 	public int getId() {
 		return this.id;
 	}
+
+	// --- [FUZZING] Predicate methods to check if operations can proceed ---
+
+	/**
+	 * Returns true if collect() can proceed without blocking.
+	 * Condition: station must have a cart and a gem
+	 */
+	public synchronized boolean canCollect() {
+		return this.cart != null && this.gem;
+	}
+
+	/**
+	 * Returns true if deliver() can proceed without blocking.
+	 * Condition: station must not have a cart
+	 */
+	public synchronized boolean canDeliver() {
+		return this.cart == null;
+	}
+
+	/**
+	 * Returns true if depositGem() can proceed without blocking.
+	 * Condition: station must not have a gem
+	 */
+	public synchronized boolean canDepositGem() {
+		return !this.gem;
+	}
 }

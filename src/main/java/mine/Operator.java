@@ -21,8 +21,13 @@ public class Operator extends Thread {
 		while (!isInterrupted()) {
 			try {
 				// [FUZZING-HOOK] Allow token-based control of loop iteration
-				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(
-					mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken());
+				mine.fuzzing.ThreadToken token = mine.fuzzing.TokenControllerProvider.getRegistry().getCurrentThreadToken();
+				mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(token);
+				
+				// [LOGGING] loop iteration start
+				if (token != null) {
+					MineLogger.log("OPERATOR", "iteration start [" + token.getUniqueId() + "]");
+				}
 				
 				sleep(Params.ELEVATOR_TIME);
 				
@@ -38,4 +43,16 @@ public class Operator extends Thread {
 		}
 	}
 
+	// --- [FUZZING] Methods to check if this operator can make progress ---
+
+	/**
+	 * Returns true if the operator can proceed (can operate empty elevator).
+	 */
+	public boolean canProceed() {
+		return elevator.canOperateEmpty();
+	}
+
+	public Elevator getElevator() {
+		return elevator;
+	}
 }
