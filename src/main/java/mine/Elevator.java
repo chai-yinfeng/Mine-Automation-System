@@ -73,7 +73,7 @@ public class Elevator extends Location {
 		
 	}
 
-	// Allows the Producer to collect a Cart from the top of the shaft, once
+	// Allows the Consumer to collect a Cart from the top of the shaft, once
 	// elevator present and not empty.
 	public synchronized Cart depart() throws InterruptedException {
 		
