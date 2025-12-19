@@ -144,8 +144,6 @@ public class MineFuzzTarget {
                         if (firstsetup) {
                             System.out.println("===============Finished Setup===============");
                             firstsetup = false;
-                        } else {
-                            if (iter -- == 0) return; // early return.
                         }
                         tokenIdx = data.consumeInt(0, allTokens.size() - 1);
                     }
@@ -224,9 +222,9 @@ public class MineFuzzTarget {
         }
 
         // 7. Watch for deadlock / stall
-        DeadlockWatcher watcher = new DeadlockWatcher(MAX_RUN_MS);
+        AsyncDeadlockWatcher watcher = new AsyncDeadlockWatcher(MAX_RUN_MS, Thread.currentThread());
         try {
-            watcher.watch();
+            watcher.start();
         } catch (AssertionError e) {
             System.out.println("maxRunMs = " + MAX_RUN_MS);
             System.out.println(provider);
