@@ -15,10 +15,13 @@ public class Engine extends Thread {
 	
 	// the engine's destination location (elevator or station)
 	protected Location destination;
+
+    private boolean inMid = false;
 	
 	public Engine(Location origin, Location destination) {
 		this.origin = origin;
 		this.destination = destination;
+        this.inMid = false;
 	}
 	
 	public void run() {
@@ -35,12 +38,18 @@ public class Engine extends Thread {
 				
 				// collect a cart from the origin
 				Cart cart = this.origin.collect();
+
+                this.inMid = true;
+
+                mine.fuzzing.TokenControllerProvider.getController().onLoopIteration(token);
 				
 				// wait for the duration of the journey
 				sleep(Params.ENGINE_TIME);
 				
 				// deliver a cart to the destination
 				this.destination.deliver(cart);
+
+                this.inMid = false;
 			}
 			catch (InterruptedException e) {
                 System.out.println(e);
@@ -56,6 +65,7 @@ public class Engine extends Thread {
 	 * An engine can proceed if it can collect from its origin AND deliver to its destination.
 	 */
 	public boolean canProceed() {
+        if (this.inMid) return true;
 		if (origin instanceof Elevator) {
 			Elevator elev = (Elevator) origin;
 			// Collecting from bottom of elevator
@@ -69,18 +79,20 @@ public class Engine extends Thread {
 			}
 		}
 
-		if (destination instanceof Elevator) {
-			Elevator elev = (Elevator) destination;
-			// Delivering to bottom of elevator
-			if (!elev.canDeliverToBottom()) {
-				return false;
-			}
-		} else if (destination instanceof Station) {
-			Station station = (Station) destination;
-			if (!station.canDeliver()) {
-				return false;
-			}
-		}
+        // if it can collect then collect it, hold the cart in hand.
+
+//		if (destination instanceof Elevator) {
+//			Elevator elev = (Elevator) destination;
+//			// Delivering to bottom of elevator
+//			if (!elev.canDeliverToBottom()) {
+//				return false;
+//			}
+//		} else if (destination instanceof Station) {
+//			Station station = (Station) destination;
+//			if (!station.canDeliver()) {
+//				return false;
+//			}
+//		}
 
 		return true;
 	}
