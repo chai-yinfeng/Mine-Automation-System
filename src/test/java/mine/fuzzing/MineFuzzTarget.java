@@ -106,6 +106,22 @@ public class MineFuzzTarget {
             sim.startAllRemaining();
         }
 
+        int[] trace_token = new int[]{
+            0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 9, 9, 4, 11, 6,
+            0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 9, 9, 4, 6,
+            0, 10, 10, 3, 7, 7, 2, 8, 8, 9, 9, 6,
+            0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 6,
+            0, 10, 10, 3, 7, 7, 2, 8, 6,
+            0, 10, 10, 3, 7, 7, 2, 6,
+            0, 10, 10, 3, 7, 6,
+            0, 10, 10, 3, 6,
+            0, 10, 6,
+            0, 10,
+            0
+        };
+
+        int index = 0;
+
         // 6. If using gated control, release iterations based on fuzz input
         if (useGating) {
             // Get all registered tokens for precise control
@@ -116,9 +132,23 @@ public class MineFuzzTarget {
                 int consecutiveBlocked = 0;
                 final int MAX_CONSECUTIVE_BLOCKED = 100; // Try 100 tokens before forcing one
 
+                boolean firstsetup = true;
+                int iter = 9;
                 while (data.remainingBytes() > 1) {
                     // Pick a unique token to release (instance-specific control)
-                    int tokenIdx = data.consumeInt(0, allTokens.size() - 1);
+                    int tokenIdx = 0;
+                    if (index < trace_token.length) {
+                        tokenIdx = trace_token[index];
+                        index ++;
+                    }else{
+                        if (firstsetup) {
+                            System.out.println("===============Finished Setup===============");
+                            firstsetup = false;
+                        } else {
+                            if (iter -- == 0) return; // early return.
+                        }
+                        tokenIdx = data.consumeInt(0, allTokens.size() - 1);
+                    }
                     ThreadToken token = allTokens.get(tokenIdx);
 
                     // Check if this thread can actually make progress (not blocked on a wait condition)
@@ -129,8 +159,8 @@ public class MineFuzzTarget {
                     if (canProceed) {
                         // Release exactly 1 iteration for serialized execution
                         // Only one thread works at a time, completing its task before the next token is granted
-                        controller.releaseIteration(token);
                         System.out.println("Token granted to: " + token);
+                        controller.releaseIteration(token);
                         consecutiveBlocked = 0; // Reset counter on successful grant
                         tokenGranted = true;
                     } else {
@@ -170,7 +200,7 @@ public class MineFuzzTarget {
                     // serialization. Adjust if thread operations take longer than expected.
                     if (tokenGranted) {
                         try {
-                            Thread.sleep(500);
+                            Thread.sleep(1000);
                         } catch (InterruptedException e) {
                             break;
                         }
@@ -227,7 +257,7 @@ public class MineFuzzTarget {
      */
     private static void printThreadStatusTable(MineSimulation sim, ThreadTokenRegistry registry) {
         System.out.println("\n╔════════════════════════════════════════════════════╗");
-        System.out.println("║         Thread Status Table (Current Tick)        ║");
+        System.out.println("║         Thread Status Table (Current Tick)         ║");
         System.out.println("╠════════════════════════════════╦═══════════════════╣");
         System.out.println("║ Thread                         ║ Can Proceed?      ║");
         System.out.println("╠════════════════════════════════╬═══════════════════╣");
@@ -247,7 +277,7 @@ public class MineFuzzTarget {
                 boolean canProceed = sim.canThreadProceed(token);
                 String status = canProceed ? "✅ Yes" : "❌ No";
                 String threadName = String.format("%-30s", token.getUniqueId());
-                System.out.printf("║ %s ║ %-17s ║%n", threadName, status);
+                System.out.printf("║ %s ║ %-16s ║%n", threadName, status);
             }
         }
         
