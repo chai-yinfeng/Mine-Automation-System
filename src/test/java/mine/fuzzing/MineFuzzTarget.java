@@ -82,149 +82,149 @@ public class MineFuzzTarget {
 
         // 5. Start threads - all or subset based on fuzz input
         boolean startAll = true;
-        if (startAll) {
-            sim.startAll();
-        } else {
-            // Start subset of threads based on token selection
-            int numStarts = data.consumeInt(1, sim.threadCount());
-            for (int i = 0; i < numStarts && data.remainingBytes() > 1; i++) {
-                int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
-                ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
-                int instanceId = data.consumeInt(0, 3);
-                ThreadToken token = new ThreadToken(role, instanceId);
-                Thread t = registry.getThread(token);
-                if (t != null) {
-                    Thread[] allThreads = sim.getAllThreads();
-                    for (int j = 0; j < allThreads.length; j++) {
-                        if (allThreads[j] == t) {
-                            sim.startThread(j);
-                            break;
+
+        // 6. Watch for deadlock / stall
+        AsyncDeadlockWatcher watcher = new AsyncDeadlockWatcher(MAX_RUN_MS, Thread.currentThread());
+        watcher.start();
+        try {
+            if (startAll) {
+                sim.startAll();
+            } else {
+                // Start subset of threads based on token selection
+                int numStarts = data.consumeInt(1, sim.threadCount());
+                for (int i = 0; i < numStarts && data.remainingBytes() > 1; i++) {
+                    int roleIdx = data.consumeInt(0, ThreadToken.Role.values().length - 1);
+                    ThreadToken.Role role = ThreadToken.Role.values()[roleIdx];
+                    int instanceId = data.consumeInt(0, 3);
+                    ThreadToken token = new ThreadToken(role, instanceId);
+                    Thread t = registry.getThread(token);
+                    if (t != null) {
+                        Thread[] allThreads = sim.getAllThreads();
+                        for (int j = 0; j < allThreads.length; j++) {
+                            if (allThreads[j] == t) {
+                                sim.startThread(j);
+                                break;
+                            }
                         }
                     }
                 }
+                sim.startAllRemaining();
             }
-            sim.startAllRemaining();
-        }
 
-        int[] trace_token = new int[]{
-            0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 9, 9, 4, 11, 6,
-            0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 9, 9, 4, 6,
-            0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 9, 9, 6,
-            0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 6,
-            0, 10, 10, 3, 7, 7, 2, 8, 6,
-            0, 10, 10, 3, 7, 7, 2, 6,
-            0, 10, 10, 3, 7, 6,
-            0, 10, 10, 3, 6,
-            0, 10, 6,
-            0, 10,
-            0
-        };
+            int[] trace_token = new int[]{
+                0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 9, 9, 4, 11, 6,
+                0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 9, 9, 4, 6,
+                0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 9, 9, 6,
+                0, 10, 10, 3, 7, 7, 2, 8, 8, 5, 6,
+                0, 10, 10, 3, 7, 7, 2, 8, 6,
+                0, 10, 10, 3, 7, 7, 2, 6,
+                0, 10, 10, 3, 7, 6,
+                0, 10, 10, 3, 6,
+                0, 10, 6,
+                0, 10,
+                0
+            };
 
-        int index = 0;
+            int index = 0;
 
-        // 6. If using gated control, release iterations based on fuzz input
-        if (useGating) {
-            // Get all registered tokens for precise control
-            java.util.List<ThreadToken> allTokens = new java.util.ArrayList<>(registry.getAllTokens());
-            
-            // Only proceed if there are registered tokens
-            if (!allTokens.isEmpty()) {
-                int consecutiveBlocked = 0;
-                final int MAX_CONSECUTIVE_BLOCKED = 100; // Try 100 tokens before forcing one
+            // 7. If using gated control, release iterations based on fuzz input
+            if (useGating) {
+                // Get all registered tokens for precise control
+                java.util.List<ThreadToken> allTokens = new java.util.ArrayList<>(registry.getAllTokens());
 
-                boolean firstsetup = true;
-                int iter = 9;
-                while (data.remainingBytes() > 1) {
-                    // Pick a unique token to release (instance-specific control)
-                    int tokenIdx = 0;
-                    if (index < trace_token.length) {
-                        tokenIdx = trace_token[index];
-                        index ++;
-                    }else{
-                        if (firstsetup) {
-                            System.out.println("===============Finished Setup===============");
-                            firstsetup = false;
+                // Only proceed if there are registered tokens
+                if (!allTokens.isEmpty()) {
+                    int consecutiveBlocked = 0;
+                    final int MAX_CONSECUTIVE_BLOCKED = 100; // Try 100 tokens before forcing one
+
+                    boolean firstsetup = true;
+                    int iter = 9;
+                    while (data.remainingBytes() > 1) {
+                        // Pick a unique token to release (instance-specific control)
+                        int tokenIdx = 0;
+                        if (index < trace_token.length) {
+                            tokenIdx = trace_token[index];
+                            index ++;
+                        }else{
+                            if (firstsetup) {
+                                System.out.println("===============Finished Setup===============");
+                                firstsetup = false;
+                            }
+                            tokenIdx = data.consumeInt(0, allTokens.size() - 1);
                         }
-                        tokenIdx = data.consumeInt(0, allTokens.size() - 1);
-                    }
-                    ThreadToken token = allTokens.get(tokenIdx);
+                        ThreadToken token = allTokens.get(tokenIdx);
 
-                    // Check if this thread can actually make progress (not blocked on a wait condition)
-                    boolean canProceed = sim.canThreadProceed(token);
-                    boolean tokenGranted = false;
+                        // Check if this thread can actually make progress (not blocked on a wait condition)
+                        boolean canProceed = sim.canThreadProceed(token);
+                        boolean tokenGranted = false;
 
 
-                    if (canProceed) {
-                        // Release exactly 1 iteration for serialized execution
-                        // Only one thread works at a time, completing its task before the next token is granted
-                        System.out.println("Token granted to: " + token);
-                        controller.releaseIteration(token);
-                        consecutiveBlocked = 0; // Reset counter on successful grant
-                        tokenGranted = true;
-                    } else {
-                        consecutiveBlocked++;
-
-                        // If too many consecutive tokens are blocked, force grant one to prevent livelock
-                        // This handles cases where conditional logic is too conservative
-                        if (consecutiveBlocked >= MAX_CONSECUTIVE_BLOCKED) {
-                            System.out.println("WARNING: " + MAX_CONSECUTIVE_BLOCKED + " consecutive tokens blocked. Force-granting token to: " + token.getUniqueId());
+                        if (canProceed) {
+                            // Release exactly 1 iteration for serialized execution
+                            // Only one thread works at a time, completing its task before the next token is granted
+                            System.out.println("Token granted to: " + token);
                             controller.releaseIteration(token);
-                            consecutiveBlocked = 0;
+                            consecutiveBlocked = 0; // Reset counter on successful grant
                             tokenGranted = true;
                         } else {
-                            // Thread is blocked, don't grant token
-                            // Consume some bytes to avoid infinite loop
-                            final int DUMMY_CONSUME_LIMIT = 100;
-                            if (data.remainingBytes() > 1) {
-                                data.consumeInt(0, DUMMY_CONSUME_LIMIT);
+                            consecutiveBlocked++;
+
+                            // If too many consecutive tokens are blocked, force grant one to prevent livelock
+                            // This handles cases where conditional logic is too conservative
+                            if (consecutiveBlocked >= MAX_CONSECUTIVE_BLOCKED) {
+                                System.out.println("WARNING: " + MAX_CONSECUTIVE_BLOCKED + " consecutive tokens blocked. Force-granting token to: " + token.getUniqueId());
+                                controller.releaseIteration(token);
+                                consecutiveBlocked = 0;
+                                tokenGranted = true;
+                            } else {
+                                // Thread is blocked, don't grant token
+                                // Consume some bytes to avoid infinite loop
+                                final int DUMMY_CONSUME_LIMIT = 100;
+                                if (data.remainingBytes() > 1) {
+                                    data.consumeInt(0, DUMMY_CONSUME_LIMIT);
+                                }
+                            }
+                        }
+
+                        System.out.println("Remaining bytes: " + data.remainingBytes());
+                        printThreadStatusTable(sim, registry);
+
+                        // Only sleep if we actually granted a token
+                        // Long delay to ensure the thread completes its work before next token grant
+                        // This provides serialized execution - one thread works at a time
+                        // Delay must be long enough for:
+                        // - Thread to acquire the permit
+                        // - Execute its business logic (collect/deliver/etc with blocking waits)
+                        // - Complete and loop back to waiting state
+                        //
+                        // Note: This is a pragmatic timeout-based approach. A more sophisticated solution
+                        // would use completion callbacks, but that would require modifying all thread classes.
+                        // For fuzzing purposes, this 5-second delay is acceptable and provides reliable
+                        // serialization. Adjust if thread operations take longer than expected.
+                        if (tokenGranted) {
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                                break;
                             }
                         }
                     }
 
-                    System.out.println("Remaining bytes: " + data.remainingBytes());
-                    printThreadStatusTable(sim, registry);
-
-                    // Only sleep if we actually granted a token
-                    // Long delay to ensure the thread completes its work before next token grant
-                    // This provides serialized execution - one thread works at a time
-                    // Delay must be long enough for:
-                    // - Thread to acquire the permit
-                    // - Execute its business logic (collect/deliver/etc with blocking waits)
-                    // - Complete and loop back to waiting state
-                    // 
-                    // Note: This is a pragmatic timeout-based approach. A more sophisticated solution
-                    // would use completion callbacks, but that would require modifying all thread classes.
-                    // For fuzzing purposes, this 5-second delay is acceptable and provides reliable
-                    // serialization. Adjust if thread operations take longer than expected.
-                    if (tokenGranted) {
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            break;
-                        }
+                    // After fuzzer data is exhausted, determine behavior based on configuration
+                    // Default behavior (releaseGatesOnDataExhaustion=false): terminate fuzzing gracefully
+                    // Optional behavior (releaseGatesOnDataExhaustion=true): release all gates for free execution
+                    if (releaseGatesOnDataExhaustion) {
+                        System.out.println("Fuzzer data exhausted. Releasing all gates for free execution...");
+                        controller.releaseAllGates();
+                    } else {
+                        System.out.println("Fuzzer data exhausted. Fuzzing test completed successfully.");
+                        printThreadStatusTable(sim, registry);
+                        // Gracefully terminate - threads remain gated, fuzzing test is complete
+                        // DeadlockWatcher will not detect this as a deadlock since we're intentionally stopping
+                        return;
                     }
                 }
-                
-                // After fuzzer data is exhausted, determine behavior based on configuration
-                // Default behavior (releaseGatesOnDataExhaustion=false): terminate fuzzing gracefully
-                // Optional behavior (releaseGatesOnDataExhaustion=true): release all gates for free execution
-                if (releaseGatesOnDataExhaustion) {
-                    System.out.println("Fuzzer data exhausted. Releasing all gates for free execution...");
-                    controller.releaseAllGates();
-                } else {
-                    System.out.println("Fuzzer data exhausted. Fuzzing test completed successfully.");
-                    printThreadStatusTable(sim, registry);
-                    // Gracefully terminate - threads remain gated, fuzzing test is complete
-                    // DeadlockWatcher will not detect this as a deadlock since we're intentionally stopping
-                    return;
-                }
             }
-        }
-
-        // 7. Watch for deadlock / stall
-        AsyncDeadlockWatcher watcher = new AsyncDeadlockWatcher(MAX_RUN_MS, Thread.currentThread());
-        try {
-            watcher.start();
         } catch (AssertionError e) {
             System.out.println("maxRunMs = " + MAX_RUN_MS);
             System.out.println(provider);
@@ -237,6 +237,8 @@ public class MineFuzzTarget {
             }
             throw e;
         } finally {
+            watcher.stop();
+            watcher.throwIfDetected();
             try {
                 sim.stopAll();
             } catch (InterruptedException ignored) {}
