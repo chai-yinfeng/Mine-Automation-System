@@ -57,6 +57,9 @@ public class MineFuzzTarget {
 
     public static void fuzzerTestOneInput(FuzzedDataProvider data) {
 
+        int initialBytes = data.remainingBytes();
+        System.err.println("Input size: " + initialBytes + " bytes");
+
         if (data.remainingBytes() < 200) {
             return;
         }
@@ -124,6 +127,7 @@ public class MineFuzzTarget {
                 0, 10,
                 0
             };
+//            int[] trace_token = new int[]{};
 
             int index = 0;
 
@@ -149,6 +153,7 @@ public class MineFuzzTarget {
                             if (firstsetup) {
                                 System.out.println("===============Finished Setup===============");
                                 firstsetup = false;
+                                return;
                             }
                             tokenIdx = data.consumeInt(0, allTokens.size() - 1);
                         }

@@ -16,7 +16,7 @@ public class Engine extends Thread {
 	// the engine's destination location (elevator or station)
 	protected Location destination;
 
-    private boolean inMid = false;
+    private volatile boolean inMid = false;
 	
 	public Engine(Location origin, Location destination) {
 		this.origin = origin;
@@ -64,38 +64,31 @@ public class Engine extends Thread {
 	 * Returns true if this engine can make progress (collect from origin and deliver to destination).
 	 * An engine can proceed if it can collect from its origin AND deliver to its destination.
 	 */
-	public boolean canProceed() {
-        if (this.inMid) return true;
-		if (origin instanceof Elevator) {
-			Elevator elev = (Elevator) origin;
-			// Collecting from bottom of elevator
-			if (!elev.canCollectFromBottom()) {
-				return false;
-			}
-		} else if (origin instanceof Station) {
-			Station station = (Station) origin;
-			if (!station.canCollect()) {
-				return false;
-			}
-		}
-
-        // if it can collect then collect it, hold the cart in hand.
-
-//		if (destination instanceof Elevator) {
-//			Elevator elev = (Elevator) destination;
-//			// Delivering to bottom of elevator
-//			if (!elev.canDeliverToBottom()) {
-//				return false;
-//			}
-//		} else if (destination instanceof Station) {
-//			Station station = (Station) destination;
-//			if (!station.canDeliver()) {
-//				return false;
-//			}
-//		}
-
-		return true;
-	}
+    public boolean canProceed() {
+        if (!inMid) {
+            return canCollectFrom(origin);
+        } else {
+            return canDeliverTo(destination);
+        }
+    }
+    private boolean canCollectFrom(Location loc) {
+        if (loc instanceof Elevator elev) {
+            return elev.canCollectFromBottom();
+        } else if (loc instanceof Station station) {
+            return station.canCollect();
+        } else {
+            throw new IllegalStateException("Unknown origin location type: " + loc.getClass());
+        }
+    }
+    private boolean canDeliverTo(Location loc) {
+        if (loc instanceof Elevator elev) {
+            return elev.canDeliverToBottom();
+        } else if (loc instanceof Station station) {
+            return station.canDeliver();
+        } else {
+            throw new IllegalStateException("Unknown destination location type: " + loc.getClass());
+        }
+    }
 
 	public Location getOrigin() {
 		return origin;

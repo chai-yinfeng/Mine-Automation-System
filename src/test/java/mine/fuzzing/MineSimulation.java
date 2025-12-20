@@ -2,6 +2,9 @@ package mine.fuzzing;
 
 import mine.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MineSimulation {
 
     private final Producer producer;
@@ -15,6 +18,8 @@ public class MineSimulation {
     // flat view for fuzzing / scheduling
     private final Thread[] threads;
     private final boolean[] started;
+
+    private ThreadTokenRegistry registry = null;
 
 //    public MineSimulation() {
 //        int n = Params.STATIONS;
@@ -99,12 +104,12 @@ public class MineSimulation {
         registry.register(producer, new ThreadToken(ThreadToken.Role.PRODUCER, 0));
         registry.register(consumer, new ThreadToken(ThreadToken.Role.CONSUMER, 0));
         registry.register(operator, new ThreadToken(ThreadToken.Role.OPERATOR, 0));
-        
+
         // Register miners
         for (int i = 0; i < miners.length; i++) {
             registry.register(miners[i], new ThreadToken(ThreadToken.Role.MINER, i));
         }
-        
+
         // Register engines
         int engineId = 0;
         for (Engine e : engines) {
@@ -112,6 +117,8 @@ public class MineSimulation {
         }
         registry.register(firstEngine, new ThreadToken(ThreadToken.Role.ENGINE, engineId++));
         registry.register(lastEngine, new ThreadToken(ThreadToken.Role.ENGINE, engineId++));
+
+        this.registry = registry;
     }
     
     /**
@@ -247,5 +254,19 @@ public class MineSimulation {
         }
 
         return false;
+    }
+
+
+    /**
+     * Returns all tokens that can currently make progress.
+     */
+    public List<ThreadToken> getProceedableTokens() {
+        List<ThreadToken> ready = new ArrayList<>();
+        for (ThreadToken token : this.registry.getAllTokens()) {
+            if (canThreadProceed(token)) {
+                ready.add(token);
+            }
+        }
+        return ready;
     }
 }
