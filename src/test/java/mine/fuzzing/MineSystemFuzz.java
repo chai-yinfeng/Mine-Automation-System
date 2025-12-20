@@ -5,7 +5,7 @@ import com.code_intelligence.jazzer.junit.FuzzTest;
 
 public class MineSystemFuzz {
 
-    @FuzzTest(maxDuration = "10m")
+    @FuzzTest(maxDuration = "30m")
     public void fuzzMine(FuzzedDataProvider data) {
         MineFuzzTarget.fuzzerTestOneInput(data);
     }
