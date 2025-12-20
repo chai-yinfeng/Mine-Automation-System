@@ -26,8 +26,11 @@ This project implements a multi-threaded mine automation system with:
 - **Thread-safe synchronization** across carts, elevators, and stations
 - **Formal verification** using JBMC to prove correctness properties
 - **Fuzz testing** with Jazzer to discover race conditions and deadlocks
+- **Compile-time override design** for clean separation of production and testing code
 
-For detailed architecture and design decisions, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The architecture features a novel approach: **production code** (`src/main/`) remains clean and focused, while **testing infrastructure** (`src/test/`) provides verification and fuzzing capabilities through compile-time classpath override. This enables different behavior in testing vs. production without modifying core simulation logic.
+
+For detailed architecture, compile-time override mechanism, and design principles, see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ## Project Structure
 
@@ -59,10 +62,9 @@ Mine-Automation-System/
 
 ## Documentation
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, thread roles, and synchronization mechanisms
-- **[VERIFICATION_GUIDE.md](docs/VERIFICATION_GUIDE.md)** - How to run JBMC formal verification
-- **[FUZZING_GUIDE.md](docs/FUZZING_GUIDE.md)** - How to run Jazzer fuzz testing
-- **[BUGFIX_VERIFICATION.md](docs/BUGFIX_VERIFICATION.md)** - Known bugs, fixes, and verification
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, compile-time override mechanism, thread roles, synchronization patterns, and separation of production/testing code
+- **[FUZZING_GUIDE.md](docs/FUZZING_GUIDE.md)** - Comprehensive fuzzing guide including token-controlled thread fuzzing extension
+- **[BUGFIX_VERIFICATION.md](docs/BUGFIX_VERIFICATION.md)** - Known bugs, fixes, and verification results
 - **[THREAD_TOKEN_LOCK_FIX.md](docs/THREAD_TOKEN_LOCK_FIX.md)** - Thread token deadlock fix details
 
 ## Building and Testing
