@@ -1,222 +1,219 @@
+# Mine Automation System
 
+A concurrent mine automation simulation with formal verification (JBMC) and fuzz testing (Jazzer) infrastructure.
+
+## Quick Start
+
+```bash
+# 1. Build the project
+mvn clean package -DskipTests
+
+# 2. Run simulation
+mvn exec:java
+
+# 3. Run tests
+mvn test
+
+# 4. Run fuzzing (requires Jazzer CLI)
+export JAZZER_FUZZ=1
+mvn -Dtest=mine.fuzzing.MineSystemFuzz test
+```
+
+## Project Overview
+
+This project implements a multi-threaded mine automation system with:
+- **Producer/Consumer pipeline** for ore processing
+- **Thread-safe synchronization** across carts, elevators, and stations
+- **Formal verification** using JBMC to prove correctness properties
+- **Fuzz testing** with Jazzer to discover race conditions and deadlocks
+
+For detailed architecture and design decisions, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Project Structure
 
 ```
 Mine-Automation-System/
-│
-├─ src/
-│   ├─ main/java/mine/        # Application source code
-│   └─ test/java/mine/        # Verification harnesses (JBMC + Jazzer)
-│
-├─ pom.xml                    # Maven build configuration
-└─ README.md                  # This document
+├── src/
+│   ├── main/java/mine/          # Core simulation code
+│   │   ├── Cart.java            # Transport cart logic
+│   │   ├── Elevator.java        # Elevator controller
+│   │   ├── Station.java         # Loading/unloading station
+│   │   ├── Producer.java        # Miner + Engine threads
+│   │   ├── Consumer.java        # Operator thread
+│   │   └── fuzzing/             # Token-based thread control
+│   └── test/java/mine/          # Test harnesses
+│       ├── formal/              # JBMC verification tests
+│       └── fuzzing/             # Jazzer fuzz targets
+├── docs/
+│   ├── ARCHITECTURE.md          # System design and components
+│   ├── BUGFIX_VERIFICATION.md   # Bug fixes and verification results
+│   ├── THREAD_TOKEN_LOCK_FIX.md # Thread token synchronization fix
+│   ├── FUZZING_GUIDE.md         # Fuzzing instructions and results
+│   └── VERIFICATION_GUIDE.md    # JBMC verification guide
+├── test-artifacts/              # Fuzzing results
+│   ├── crashes/                 # Discovered crash inputs
+│   ├── timeouts/                # Timeout cases
+│   └── corpus/                  # Seed corpus
+└── pom.xml                      # Maven configuration
 ```
-The source tree follows a standard Maven Java layout, allowing tools like JBMC, Jazzer, and JUnit to operate correctly.
 
-## How to Build and Run
+## Documentation
+
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, thread roles, and synchronization mechanisms
+- **[VERIFICATION_GUIDE.md](docs/VERIFICATION_GUIDE.md)** - How to run JBMC formal verification
+- **[FUZZING_GUIDE.md](docs/FUZZING_GUIDE.md)** - How to run Jazzer fuzz testing
+- **[BUGFIX_VERIFICATION.md](docs/BUGFIX_VERIFICATION.md)** - Known bugs, fixes, and verification
+- **[THREAD_TOKEN_LOCK_FIX.md](docs/THREAD_TOKEN_LOCK_FIX.md)** - Thread token deadlock fix details
+
+## Building and Testing
+
+### Prerequisites
+
+- Java 17 or higher
+- Maven 3.6+
+- (Optional) JBMC for formal verification
+- (Optional) Jazzer CLI for advanced fuzzing
+
+### Compile
 
 ```bash
-# Compile
-mvn -q -DskipTests package
+mvn clean compile
+```
 
-# Run simulation
+### Run Simulation
+
+```bash
+# Default configuration (5 miners, random pauses)
 mvn exec:java
 
-# Run verification
+# Custom configuration via system properties
+mvn exec:java -Dmine.numMiners=10 -Dmine.seed=42
+```
+
+### Run All Tests
+
+```bash
+# Includes unit tests, verification harnesses, and regression fuzz tests
+mvn test
+```
+
+## Formal Verification with JBMC
+
+Verify thread-safety properties using bounded model checking:
+
+```bash
+# Install JBMC (if not already installed)
+# See: https://github.com/diffblue/cbmc
 export PATH=~/cbmc-git/jbmc/src/jbmc:$PATH
 
+# Compile test classes
 mvn -q -DskipTests test-compile
 
+# Set classpath
 CP="target/test-classes:target/classes"
 
+# Verify Station synchronization
 jbmc mine.formal.StationJBMCVerification \
   --classpath "$CP" \
   --unwind 3 \
   --no-unwinding-assertions \
   --trace
 
+# Verify Cart thread-safety
 jbmc mine.formal.CartJBMCVerification \
   --classpath "$CP" \
   --unwind 3 \
   --no-unwinding-assertions \
   --trace
 
+# Verify Elevator logic
 jbmc mine.formal.ElevatorJBMCVerification \
   --classpath "$CP" \
   --unwind 4 \
   --no-unwinding-assertions \
   --trace
+```
 
+For detailed verification results and property explanations, see [docs/VERIFICATION_GUIDE.md](docs/VERIFICATION_GUIDE.md).
 
-# Run fuzzer (bin)
-JAZZER=~/jazzer-bin/jazzer
+## Fuzz Testing with Jazzer
 
-$JAZZER --cp="target/classes:target/test-classes" \
-        --target_class=mine.fuzzing.MineSystemFuzz \
-        --uses_fuzzed_data_provider=1
+### Option 1: Maven Plugin (Recommended)
 
-# Run fuzzer (JUnit)
-# --- Regression mode ---
+```bash
+# ================= Run modern JUnit fuzz target =================
 # Run all tests（including @Test and @FuzzTest）
 mvn test
 
-# Only run fuzz class
-#unset JAZZER_FUZZ
-
+# --- Regression mode ---
+unset JAZZER_FUZZ
 mvn -Dtest=mine.fuzzing.MineSystemFuzz test
 
 # --- Fuzzing mode ---
 export JAZZER_FUZZ=1
-
-# Run JUnit as usual
 mvn -Dtest=mine.fuzzing.MineSystemFuzz test
-
 ```
----
 
-command to run jazzer for the `MineFuzzTarget.java`
+### Option 2: Jazzer CLI (Advanced)
 
-need `jazzer cli` installed explicitly!
+Requires [Jazzer CLI](https://github.com/CodeIntelligenceTesting/jazzer) installed:
 
 ```bash
-# compile the whole project
+# Compile project
 mvn -q -DskipTests test-compile
 
-# let maven to generate the classpath.
-# `test-classes` must in prior of `classes`, incase for implecit override. 
+# Build classpath
 CP="target/test-classes:target/classes:$(mvn -q -DincludeScope=test dependency:build-classpath -Dmdep.path)"
 
-# Fuzz the mine.fuzzing.MineFuzzTarget by Fuzzer CLI
+# ================= Run legacy fuzz target =================
 jazzer \
   --cp="$CP" \
   --target_class=mine.fuzzing.MineFuzzTarget \
   --instrumentation_includes='mine.**' \
   --reproducer_path=target/jazzer-repros \
-  -max_total_time=120
+  test-artifacts/corpus \
+  -- \
+  -max_len=4096 \
+  -timeout=50 \
+  -max_total_time=120;
 ```
 
----
+For fuzzing results and discovered issues, see [docs/FUZZING_GUIDE.md](docs/FUZZING_GUIDE.md).
 
-## Token-Controlled Thread Fuzzing Extension
+## Token-Controlled Thread Fuzzing
 
-### Overview
+This project includes a novel **token-based thread control** system for deterministic interleaving exploration:
 
-The token-controlled fuzzing extension enables fuzz-driven exploration of thread scheduling and interleaving without modifying the normal simulation behavior. This extension assigns immutable tokens to thread instances at construction time, allowing fuzzing harnesses to control thread behavior based on roles and instances.
+- **Fine-grained control**: Manage individual thread loop iterations at runtime
+- **Role-based targeting**: Control specific thread types (miners, operators, etc.) or individual instances
+- **Two operation modes**: Free-running (fuzz-driven delays) or gated (explicit iteration control)
+- **Zero overhead**: Disabled by default in normal simulation
+- **Reproducible testing**: Deterministically replay specific thread interleaving
+- **Deadlock testing**: Force specific race conditions and verify fixes
 
-### Architecture
+**For detailed architecture, implementation principles, and usage examples, see [docs/FUZZING_GUIDE.md](docs/FUZZING_GUIDE.md).**
 
-#### Core Components
+## Known Issues and Fixes
 
-1. **ThreadToken** (`mine.fuzzing.ThreadToken`)
-   - Immutable metadata assigned to each thread instance
-   - Identifies thread role (PRODUCER, CONSUMER, OPERATOR, MINER, ENGINE, CART)
-   - Contains instance ID for distinguishing multiple threads of the same role
-   - Example: `ThreadToken(Role.MINER, 2)` represents the third miner thread
+The project has undergone multiple verification and fuzzing cycles. Major issues discovered and fixed:
 
-2. **ThreadTokenRegistry** (`mine.fuzzing.ThreadTokenRegistry`)
-   - Thread-safe registry managing token-to-thread mappings
-   - Bidirectional lookup: thread → token, token → thread
-   - Initialized during simulation setup
-   - Cleared between test runs for clean state
+1. **Thread Token Deadlock** - Fixed lock ordering in `ThreadTokenRegistry`
+   See [docs/THREAD_TOKEN_LOCK_FIX.md](docs/THREAD_TOKEN_LOCK_FIX.md)
 
-3. **TokenController** Interface (`mine.fuzzing.TokenController`)
-   - Defines hook points for fuzz-driven control
-   - `onLoopIteration()` - called at start of thread loop
-   - `beforeOperation()` / `afterOperation()` - called around critical operations
-   - Implementations:
-     - **NoOpTokenController** - Default (zero overhead, normal simulation)
-     - **FuzzingTokenController** - Injects fuzz-driven delays and behaviors
+2. **Station Race Conditions** - Verified with JBMC and fixed synchronization
+   See [docs/BUGFIX_VERIFICATION.md](docs/BUGFIX_VERIFICATION.md)
 
-4. **TokenControllerProvider** (`mine.fuzzing.TokenControllerProvider`)
-   - Global accessor for registry and controller
-   - Defaults to no-op behavior when fuzzing is disabled
-   - Allows fuzzing infrastructure to inject custom controllers
+3. **Elevator State Machine** - Corrected empty queue handling
+   See verification results in [docs/VERIFICATION_GUIDE.md](docs/VERIFICATION_GUIDE.md)
 
-### Usage
+## Contributing
 
-#### Fine-Grained Loop Iteration Control
+When modifying the codebase:
 
-The token fuzzing extension provides two modes of operation:
+1. Run full test suite: `mvn test`
+2. Verify with JBMC (if modifying synchronization logic)
+3. Run fuzzing for at least 60 seconds
+4. Update relevant documentation in `docs/`
 
-**1. Free-Running Mode (default)**
-```java
-// Initialize registry and controller
-ThreadTokenRegistry registry = new ThreadTokenRegistry();
-sim.registerThreadTokens(registry);
-TokenControllerProvider.setRegistry(registry);
 
-// Controller injects fuzz-driven delays at each loop iteration
-FuzzingTokenController controller = new FuzzingTokenController(data, registry, false);
-TokenControllerProvider.setController(controller);
 
-sim.startAll(); // Threads run with token-controlled delays
-```
-
-**2. Gated Iteration Mode (for controlled interleaving)**
-```java
-// Enable gating - threads wait for explicit permission per iteration
-FuzzingTokenController controller = new FuzzingTokenController(data, registry, true);
-TokenControllerProvider.setController(controller);
-
-sim.startAll(); // Threads start but wait at loop entry
-
-// Release specific thread iterations from fuzz input
-for (int i = 0; i < releaseSteps; i++) {
-    ThreadToken.Role role = /* select from fuzz input */;
-    controller.releaseIterations(role, 1); // Allow one iteration
-    Thread.sleep(10); // Let thread execute
-}
-```
-
-**Loop Hooks in Thread Classes:**
-Each thread class now has a hook at the start of its while loop:
-```java
-while (!this.isInterrupted()) {
-    // [FUZZING-HOOK] Token-based control
-    TokenControllerProvider.getController().onLoopIteration(
-        TokenControllerProvider.getRegistry().getCurrentThreadToken());
-    
-    // ... thread work ...
-}
-```
-
-#### Benefits
-
-1. **Fine-grained control**: Control individual loop iterations, not just thread starts
-2. **Reproducible interleavings**: Deterministically explore specific thread execution orders
-3. **Deadlock detection**: Test controlled scenarios that trigger race conditions
-4. **Role-based fuzzing**: Target specific thread types (e.g., all miners, specific engine)
-5. **Zero overhead**: NoOpTokenController default ensures normal simulation is unaffected
-6. **Minimal changes**: Single hook line per thread class, no structural modifications
-
-### Integration with Existing Fuzzing
-
-The token extension complements existing fuzzing infrastructure:
-- **PauseProvider**: Controls timing within thread loops (unchanged)
-- **MineSimulation**: Now supports token registration for role-based control
-- **DeadlockWatcher**: Monitors remain compatible; token delays don't trigger false positives
-- **MineProgress**: Continues tracking progress across all threads
-
-### Configuration
-
-No configuration flags are needed. The extension automatically:
-- Uses NoOpTokenController by default (zero impact on normal simulation)
-- Activates only when fuzzing harnesses explicitly initialize token infrastructure
-- Cleans up state between test runs via `TokenControllerProvider.reset()`
-
-### Testing
-
-Unit tests verify token infrastructure:
-```bash
-# Run token tests
-mvn -Dtest=ThreadTokenTest,ThreadTokenRegistryTest,TokenControllerTest test
-```
-
-### Future Extensions
-
-The token framework enables future enhancements:
-- Phase-based control (initialization, steady-state, shutdown)
-- Fine-grained operation hooks (lock acquisition, queue operations)
-- Custom token controllers for specific testing scenarios
-- Integration with coverage-guided fuzzing for targeted exploration
