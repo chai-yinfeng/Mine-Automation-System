@@ -8,7 +8,7 @@ public class MineFuzzTarget {
     /**
      * Fuzz entry point.
      */
-    private static final long MAX_RUN_MS = 150000;
+    private static final long MAX_RUN_MS = 5000;
     
     /**
      * Control whether to release all gates when fuzzer data is exhausted.

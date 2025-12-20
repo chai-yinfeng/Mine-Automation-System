@@ -17,7 +17,7 @@ public class DeadlockWatcher {
         long lastProgress = MineProgress.snapshot();
         long lastProgressTime = start;
 
-        while (System.currentTimeMillis() - start < maxRunMs) {
+        while (true) {
             long[] deadlocked = bean.findDeadlockedThreads();
             if (deadlocked != null) {
                 throw new AssertionError("Monitor deadlock detected");
