@@ -43,6 +43,317 @@ jazzer \
   -max_total_time=120;
 ```
 
+## Corpus Management and Configuration
+
+### Understanding Data Consumption in Token-Based Fuzzing
+
+The token-controlled thread fuzzing approach in this project has **unique data consumption characteristics** that differ from typical fuzz targets. Understanding these characteristics is critical for effective fuzzing.
+
+#### The Data Consumption Challenge
+
+**Problem**: Token-based fuzzing consumes significantly more corpus data than traditional fuzzers.
+
+**Why?**
+1. **Per-iteration control**: Each thread loop iteration requires fuzzer input to decide which thread to advance
+2. **Fine-grained decisions**: Every decision point consumes 4 bytes (int) from the corpus:
+   - Which thread role to release? (4 bytes)
+   - Which instance of that role? (4 bytes)  
+   - How many iterations to release? (4 bytes)
+   - Delay duration? (8 bytes for long)
+
+3. **Controller initialization**: The `FuzzingTokenController` pre-generates delay sequences:
+   ```java
+   int sequenceLength = data.consumeInt(10, 50);  // 4 bytes
+   for (int i = 0; i < sequenceLength; i++) {
+       delays[i] = data.consumeLong(0, 100);      // 8 bytes per delay
+   }
+   // For 6 roles × 4 instances × 50 delays × 8 bytes = 9,600 bytes just for initialization!
+   ```
+
+4. **Gated mode**: In gated iteration mode, each step of execution consumes input:
+   ```java
+   while (data.remainingBytes() > 1) {
+       int tokenIdx = data.consumeInt(0, allTokens.size() - 1);  // 4 bytes
+       // ... grant token and execute ...
+   }
+   ```
+
+**Result**: A typical run can consume **4,000-50,000 bytes** of corpus data, compared to 100-1,000 bytes for traditional fuzzers.
+
+#### Configuration Parameters
+
+To accommodate this high data consumption, the fuzzing configuration requires careful tuning:
+
+##### 1. **Maximum Input Length: `-max_len=4096`**
+
+```bash
+jazzer \
+  --cp="$CP" \
+  --target_class=mine.fuzzing.MineFuzzTarget \
+  -- \
+  -max_len=4096
+```
+
+**Why 4096 bytes?**
+- **Minimum viable**: Enough for controller initialization (~10,000 bytes) + some iteration control
+- **Balanced**: Not so large that mutation is ineffective
+- **Practical**: Most interesting behaviors emerge within this range
+
+**What happens with different sizes?**
+- **Too small** (<1,000 bytes): Fuzzer exits early due to insufficient data
+  ```java
+  if (data.remainingBytes() < 200) {
+      return;  // Not enough data to initialize controller
+  }
+  ```
+- **Too large** (>10,000 bytes): Diminishing returns, slower mutation convergence
+
+##### 2. **Timeout: `-timeout=50`**
+
+```bash
+jazzer \
+  -- \
+  -timeout=50
+```
+
+**Why 50 seconds?**
+- **Thread coordination**: Gated mode releases threads one at a time with delays
+- **Deadlock detection**: `AsyncDeadlockWatcher` monitors for 15 seconds of no progress
+- **Safe margin**: Allows fuzzer to complete execution + cleanup before timeout
+
+**Timeout calculation**:
+```
+Maximum execution time = (# of tokens) × (release delay) + (overhead)
+                      ≈ 12 tokens × 0.5s × iterations + 15s watcher timeout
+                      ≈ 30-40 seconds typical
+```
+
+Setting timeout to 50s provides buffer for slower executions.
+
+##### 3. **Corpus Directory: `test-artifacts/corpus`**
+
+```bash
+jazzer \
+  test-artifacts/corpus \
+  -- \
+  ...
+```
+
+**Why a custom corpus?**
+
+Unlike typical fuzzers that can start with an empty corpus, token-based fuzzing benefits from **seed inputs** with appropriate size and structure.
+
+**Corpus structure**:
+```
+test-artifacts/
+├── corpus/
+│   ├── seed_5000_random     # 5,000 byte random seed
+│   ├── seed_10000_random    # 10,000 byte random seed
+│   └── interesting_*        # Discovered interesting inputs
+├── crashes/                  # Crash-inducing inputs
+└── timeouts/                 # Timeout-inducing inputs
+```
+
+**Seed generation strategy**:
+- Start with large (5,000-50,000 bytes) random inputs
+- Jazzer will mutate and minimize them
+- Interesting inputs are automatically saved to corpus
+
+### Debugging with SimpleFuzzerTest
+
+During development, debugging fuzzer behavior can be challenging because:
+- Jazzer CLI has overhead (JNI, instrumentation)
+- Input bytes are opaque binary blobs
+- Hard to reproduce specific scenarios
+
+**Solution**: `SimpleFuzzerTest.java` - A standalone debugging utility
+
+#### What is SimpleFuzzerTest?
+
+Located at `src/test/java/mine/fuzzing/SimpleFuzzerTest.java`, this class provides:
+
+1. **Mock FuzzedDataProvider**: Implements the Jazzer API without requiring Jazzer CLI
+2. **Controllable input**: Generate deterministic test data with fixed seed
+3. **Standalone execution**: Run via `main()` method for quick iteration
+4. **Debug visibility**: Print exactly what the fuzzer is consuming
+
+#### Implementation Overview
+
+```java
+public class SimpleFuzzerTest {
+    // Mock implementation of FuzzedDataProvider
+    static class SimpleMockProvider implements FuzzedDataProvider {
+        private final byte[] data;
+        private int pos = 0;
+        
+        public SimpleMockProvider(byte[] data) {
+            this.data = data;
+        }
+        
+        @Override
+        public int consumeInt(int min, int max) {
+            if (pos + 4 > data.length) return min;
+            int val = ByteBuffer.wrap(data, pos, 4).getInt();
+            pos += 4;
+            long range = (long) max - min + 1;
+            return (int) (min + (Math.abs((long) val) % range));
+        }
+        
+        @Override
+        public long consumeLong(long min, long max) {
+            if (pos + 8 > data.length) return min;
+            long val = ByteBuffer.wrap(data, pos, 8).getLong();
+            pos += 8;
+            long range = max - min + 1;
+            return min + (Math.abs(val) % range);
+        }
+        
+        @Override
+        public int remainingBytes() {
+            return Math.max(0, data.length - pos);
+        }
+        
+        // ... other methods ...
+    }
+    
+    public static void main(String[] args) {
+        // Generate 50,000 bytes of test data (deterministic seed)
+        byte[] testData = generateTestData(50000);
+        
+        SimpleMockProvider provider = new SimpleMockProvider(testData);
+        
+        // Run the fuzz target with mock data
+        MineFuzzTarget.fuzzerTestOneInput(provider);
+    }
+    
+    private static byte[] generateTestData(int size) {
+        Random rand = new Random(42);  // Fixed seed for reproducibility
+        byte[] data = new byte[size];
+        rand.nextBytes(data);
+        return data;
+    }
+}
+```
+
+#### Usage
+
+**Quick debugging run**:
+```bash
+# Compile
+mvn test-compile
+
+# Run directly
+java -cp "target/test-classes:target/classes:$(mvn -q dependency:build-classpath)" \
+  mine.fuzzing.SimpleFuzzerTest
+```
+
+**Advantages over Jazzer CLI**:
+- **Fast iteration**: No fuzzer startup overhead
+- **Reproducible**: Same input every time (fixed random seed)
+- **Debuggable**: Can attach debugger, add breakpoints
+- **Customizable**: Easy to modify input size/pattern in code
+
+**When to use**:
+- ✅ Testing fuzzer logic changes
+- ✅ Debugging data consumption issues
+- ✅ Validating token controller behavior
+- ✅ Reproducing specific scenarios
+
+**When NOT to use**:
+- ❌ Finding new bugs (use actual Jazzer for that)
+- ❌ Coverage-guided exploration (no feedback loop)
+- ❌ Corpus minimization (no mutation)
+
+### Corpus Generation Strategy
+
+Given the high data consumption, corpus generation requires strategy:
+
+#### Method 1: Manual Seed Creation
+
+```bash
+# Generate 5KB random seed
+dd if=/dev/urandom of=test-artifacts/corpus/seed_5000 bs=1 count=5000
+
+# Generate 10KB random seed
+dd if=/dev/urandom of=test-artifacts/corpus/seed_10000 bs=1 count=10000
+
+# Generate 50KB random seed (for extended fuzzing)
+dd if=/dev/urandom of=test-artifacts/corpus/seed_50000 bs=1 count=50000
+```
+
+#### Method 2: Using SimpleFuzzerTest Output
+
+The SimpleFuzzerTest can be modified to output successful inputs:
+
+```java
+public static void main(String[] args) {
+    byte[] testData = generateTestData(50000);
+    SimpleMockProvider provider = new SimpleMockProvider(testData);
+    
+    try {
+        MineFuzzTarget.fuzzerTestOneInput(provider);
+        
+        // If successful, save as corpus seed
+        Files.write(Paths.get("test-artifacts/corpus/seed_working"), testData);
+        System.out.println("✓ Saved working seed to corpus");
+    } catch (Exception e) {
+        System.err.println("✗ Execution failed");
+    }
+}
+```
+
+#### Method 3: Jazzer Auto-Generation
+
+Start fuzzing with minimal corpus, Jazzer will automatically:
+1. Mutate initial seeds
+2. Save interesting inputs that discover new coverage
+3. Minimize corpus to essential inputs
+
+```bash
+# Start with one seed
+echo "Random initial seed" | dd of=test-artifacts/corpus/seed_initial bs=1 count=4096
+
+# Jazzer will grow the corpus automatically
+export JAZZER_FUZZ=1
+mvn -Dtest=mine.fuzzing.MineSystemFuzz test
+```
+
+### Best Practices
+
+1. **Start small, scale up**:
+   - Begin with 1,000-byte seeds for quick iteration
+   - Increase to 5,000-10,000 bytes for thorough testing
+   - Use 50,000+ bytes for extended stress testing
+
+2. **Monitor consumption**:
+   ```java
+   int initialBytes = data.remainingBytes();
+   System.err.println("Input size: " + initialBytes + " bytes");
+   // ... fuzzing ...
+   System.err.println("Consumed: " + (initialBytes - data.remainingBytes()) + " bytes");
+   ```
+
+3. **Tune timeouts based on corpus size**:
+   - Small corpus (1-5KB): `-timeout=30`
+   - Medium corpus (5-10KB): `-timeout=50`
+   - Large corpus (10KB+): `-timeout=60`
+
+4. **Use SimpleFuzzerTest for debugging**:
+   - Test logic changes quickly
+   - Validate data consumption patterns
+   - Debug specific scenarios
+
+5. **Leverage Jazzer's corpus minimization**:
+   ```bash
+   # Periodically minimize corpus
+   jazzer \
+     --cp="$CP" \
+     --target_class=mine.fuzzing.MineFuzzTarget \
+     -merge=1 \
+     test-artifacts/corpus_minimized \
+     test-artifacts/corpus
+   ```
+
 ## Token-Controlled Thread Fuzzing Extension
 
 ### Overview

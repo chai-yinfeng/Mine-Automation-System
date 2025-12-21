@@ -180,7 +180,18 @@ jazzer \
   -max_total_time=120;
 ```
 
-For fuzzing results and discovered issues, see [docs/FUZZING_GUIDE.md](docs/FUZZING_GUIDE.md).
+**Configuration Notes**:
+- **`-max_len=4096`**: Token-based fuzzing consumes more data per run (4-50KB typical) due to per-iteration thread control. 4KB provides balanced coverage without excessive mutation overhead.
+- **`-timeout=50`**: Allows time for gated thread scheduling (each iteration released sequentially) plus 15s deadlock detection window.
+- **`test-artifacts/corpus`**: Pre-seeded corpus with large (5-50KB) random inputs. Token fuzzing requires larger initial seeds than typical fuzzers.
+
+**Debugging**: Use `SimpleFuzzerTest.java` for quick iteration without Jazzer overhead:
+```bash
+java -cp "target/test-classes:target/classes:$(mvn -q dependency:build-classpath)" \
+  mine.fuzzing.SimpleFuzzerTest
+```
+
+For detailed corpus management, data consumption analysis, and debugging strategies, see [docs/FUZZING_GUIDE.md](docs/FUZZING_GUIDE.md).
 
 ## Token-Controlled Thread Fuzzing
 
