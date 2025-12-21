@@ -64,6 +64,7 @@ Mine-Automation-System/
 
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, compile-time override mechanism, thread roles, synchronization patterns, and separation of production/testing code
 - **[FUZZING_GUIDE.md](docs/FUZZING_GUIDE.md)** - Comprehensive fuzzing guide including token-controlled thread fuzzing extension
+- **[VERIFICATION_GUIDE.md](docs/VERIFICATION_GUIDE.md)** - JBMC formal verification guide with harness examples and troubleshooting
 - **[BUGFIX_VERIFICATION.md](docs/BUGFIX_VERIFICATION.md)** - Known bugs, fixes, and verification results
 - **[THREAD_TOKEN_LOCK_FIX.md](docs/THREAD_TOKEN_LOCK_FIX.md)** - Thread token deadlock fix details
 
@@ -219,6 +220,22 @@ The project has undergone multiple verification and fuzzing cycles. Major issues
 3. **Elevator State Machine** - Corrected empty queue handling
    See verification results in [docs/VERIFICATION_GUIDE.md](docs/VERIFICATION_GUIDE.md)
 
+## AI-Assisted Development and Verification
+
+This project extensively leveraged **AI tools**, particularly **GitHub Copilot**, during debugging and verification phases. The AI-assisted workflow proved highly effective for:
+
+- ✅ **Documentation Generation**: 2,500+ lines of comprehensive guides (reducing hours to minutes)
+- ✅ **Structured Planning**: Clear, phased implementation plans with 2-15 minute iteration cycles
+- ✅ **Communication Enhancement**: High-quality documentation reduced team miscommunication significantly
+- ✅ **Verification Assistance**: Helped design JBMC harnesses and fuzzing strategies
+- ✅ **Debugging Support**: Suggested root causes for complex concurrency issues
+
+**Key Workflow**: GitHub Copilot's PR-based approach (automatic PR creation → iterative development → guided planning → human approval) maintained professional development standards while accelerating delivery.
+
+**Lessons Learned**: AI excels at documentation and boilerplate code but human expertise remains critical for final decisions, correctness verification, and domain-specific knowledge (formal verification, concurrency semantics).
+
+**For detailed workflow, benefits analysis, and recommendations for AI-assisted development in verification-intensive projects.**
+
 ## Contributing
 
 When modifying the codebase:
@@ -227,6 +244,7 @@ When modifying the codebase:
 2. Verify with JBMC (if modifying synchronization logic)
 3. Run fuzzing for at least 60 seconds
 4. Update relevant documentation in `docs/`
+5. Consider using AI tools (like GitHub Copilot) for documentation and planning, but always verify generated code thoroughly
 
 
 
